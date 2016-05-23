@@ -1,0 +1,226 @@
+[
+  {
+    "type": "stdout",
+    "data": "=thread-group-added,id=\"i1\"\n~\"GNU gdb (GDB) 7.11\\n\"\n~\"Copyright (C) 2016 Free Software Found"
+  },
+  {
+    "type": "stdout",
+    "data": "ation, Inc.\\n\"\n~\"License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>\\nThis is free software: you are free to change and redistribute it.\\nThere is NO WARRANTY, to the extent permitted by law.  Type \\\"show copying\\\"\\nand \\\"show warranty\\\" for details.\\n\"\n~\"T"
+  },
+  {
+    "type": "stdout",
+    "data": "his GDB was configured as \\\"x86_64-pc-linux-gnu\\\".\\nType \\\"show configuration\\\" for configuration details.\"\n~\"\\nFor bug reporting instructions, please see:\\n\"\n~\"<http://www.gnu.org/software/gdb/bugs/>.\\n\"\n~\"Find the GDB manual and other documentation resources online at:\\n<http://www.gnu.org/software/gdb/documentation/>.\\n\"\n~\"For help, type \\\"help\\\".\\n\"\n~\"Type \\\"apropos word\\\" to search for commands related to \\\"word\\\"...\\n\"\n~\"Reading symbols from hello...\"\n~\"done.\\n\"\n(gdb) \n"
+  },
+  {
+    "type": "stdin",
+    "data": "-break-insert main\n"
+  },
+  {
+    "type": "stdout",
+    "data": "^done,bkpt={number=\"1\",type=\"breakpoint\",disp=\"keep\",enabled=\"y\",addr=\"0x000000000040053e\",func=\"main\",file=\"hello.c\",fullname=\"/home/alex/Projects/react-gdb/demo/examples/hello-world/hello.c\",line=\"4\",thread-groups=[\"i1\"],times=\"0\",original-location=\"main\"}\n(gdb) \n"
+  },
+  {
+    "type": "stdin",
+    "data": "-exec-run\n"
+  },
+  {
+    "type": "stdout",
+    "data": "=thread-group-started,id=\"i1\",pid=\"1448\"\n=thread-created,id=\"1\",group-id=\"i1\"\n"
+  },
+  {
+    "type": "stdout",
+    "data": "="
+  },
+  {
+    "type": "stdout",
+    "data": "l"
+  },
+  {
+    "type": "stdout",
+    "data": "i"
+  },
+  {
+    "type": "stdout",
+    "data": "b"
+  },
+  {
+    "type": "stdout",
+    "data": "r"
+  },
+  {
+    "type": "stdout",
+    "data": "a"
+  },
+  {
+    "type": "stdout",
+    "data": "ry-loaded,id=\"/lib64/ld-linux-x86-64.so.2\",target-name=\"/lib64/ld-linux-x86-64.so.2\",host-name=\"/lib64/ld-linux-x86-64.so.2\",symbols-loaded=\"0\",thread-group=\"i1\"\n"
+  },
+  {
+    "type": "stdout",
+    "data": "^running\n"
+  },
+  {
+    "type": "stdout",
+    "data": "*running,thread-id=\"all\"\n"
+  },
+  {
+    "type": "stdout",
+    "data": "(gdb) \n"
+  },
+  {
+    "type": "stdout",
+    "data": "="
+  },
+  {
+    "type": "stdout",
+    "data": "l"
+  },
+  {
+    "type": "stdout",
+    "data": "i"
+  },
+  {
+    "type": "stdout",
+    "data": "b"
+  },
+  {
+    "type": "stdout",
+    "data": "r"
+  },
+  {
+    "type": "stdout",
+    "data": "a"
+  },
+  {
+    "type": "stdout",
+    "data": "r"
+  },
+  {
+    "type": "stdout",
+    "data": "y"
+  },
+  {
+    "type": "stdout",
+    "data": "-"
+  },
+  {
+    "type": "stdout",
+    "data": "l"
+  },
+  {
+    "type": "stdout",
+    "data": "o"
+  },
+  {
+    "type": "stdout",
+    "data": "aded,id=\"/usr/lib/coreutils/libstdbuf.so\",target-name=\"/usr/lib/coreutils/libstdbuf.so\",host-name=\"/usr/lib/coreutils/libstdbuf.so\",symbols-loaded=\"0\",thread-group=\"i1\"\n=library-loaded,id=\"/usr/lib/libc.so.6\",target-name=\"/usr/lib/libc.so.6\",host-name=\"/usr/lib/libc.so.6\",symbo"
+  },
+  {
+    "type": "stdout",
+    "data": "ls-loaded=\"0\",thread-group=\"i1\"\n"
+  },
+  {
+    "type": "stdout",
+    "data": "="
+  },
+  {
+    "type": "stdout",
+    "data": "b"
+  },
+  {
+    "type": "stdout",
+    "data": "r"
+  },
+  {
+    "type": "stdout",
+    "data": "e"
+  },
+  {
+    "type": "stdout",
+    "data": "a"
+  },
+  {
+    "type": "stdout",
+    "data": "k"
+  },
+  {
+    "type": "stdout",
+    "data": "p"
+  },
+  {
+    "type": "stdout",
+    "data": "o"
+  },
+  {
+    "type": "stdout",
+    "data": "i"
+  },
+  {
+    "type": "stdout",
+    "data": "n"
+  },
+  {
+    "type": "stdout",
+    "data": "t"
+  },
+  {
+    "type": "stdout",
+    "data": "-"
+  },
+  {
+    "type": "stdout",
+    "data": "modified,bkpt={number=\"1\",type=\"breakpoint\",disp=\"keep\",e"
+  },
+  {
+    "type": "stdout",
+    "data": "nabled=\"y\",addr=\"0x000000000040053e\",func=\"main\",file=\"hello.c\",fullname=\"/home/alex/Projects/react-gdb/demo/examples/hello-world/hello.c\",line=\"4\",thread-groups=[\"i1\"],times=\"1\",original-location=\"main\"}\n"
+  },
+  {
+    "type": "stdout",
+    "data": "~\"\\n\"\n~\"B"
+  },
+  {
+    "type": "stdout",
+    "data": "reakpoint 1, main () at hello.c:4\\n\"\n~\"4\\t  printf(\\\"Hello World\\\\n\\\");\\n\"\n*stopped,reason=\"breakpoint-hit\",disp=\"keep\",bkptno=\"1\",frame={addr=\"0x000000000040053e\",func=\"main\",args=[],file=\"hello.c\",fullname=\"/home/alex/Projects/react-gdb/demo/examples/hello-world/hello.c\",line=\"4\"},thread-id=\"1\",stopped-threads=\"all\",core=\"0\"\n"
+  },
+  {
+    "type": "stdout",
+    "data": "(gdb) \n"
+  },
+  {
+    "type": "stdin",
+    "data": "-exec-next\n"
+  },
+  {
+    "type": "stdout",
+    "data": "^running\n*running,thread-id=\"all\"\n(gdb) \n"
+  },
+  {
+    "type": "stdout",
+    "data": "Hello World\n"
+  },
+  {
+    "type": "stdout",
+    "data": "*stopped"
+  },
+  {
+    "type": "stdout",
+    "data": ",reason=\"end-stepping-range\",frame={addr=\"0x0000000000400548\",func=\"main\",args=[],file=\"hello.c\",fullname=\"/home/alex/Projects/react-gdb/demo/examples/hello-world/hello.c\",line=\"6\"},thread-id=\"1\",stopped-threads=\"all\",core=\"0\""
+  },
+  {
+    "type": "stdout",
+    "data": "\n(gdb) \n"
+  },
+  {
+    "type": "stdin",
+    "data": "-gdb-exit\n"
+  },
+  {
+    "type": "stdout",
+    "data": "^exit\n"
+  },
+  {
+    "type": "stdout",
+    "data": "=thread-exited,id=\"1\",group-id=\"i1\"\n=thread-group-exited,id=\"i1\"\n"
+  }
+]

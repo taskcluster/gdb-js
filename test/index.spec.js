@@ -1,57 +1,67 @@
 /* eslint-disable no-undef */
 
+import 'babel-polyfill'
 import { expect } from 'chai'
-import { Readable, Writable } from 'stream'
+import { PassThrough } from 'stream'
+import Docker from 'dockerode-promise'
 import GDB from '../lib'
 
-describe('state consistency', () => {
-  let stdout
-  let stderr
-  let stdin
-  let debug
+let container
+let docker = new Docker({ socketPath: '/var/run/docker.sock' })
 
-  function emulate (stream) {
-    for (let chunk of stream) {
-      switch (chunk) {
-        case 'stdin':
-          stdin.write(chunk)
-          break
-        case 'stdout':
-          stdout.push(chunk)
-          break
-        case 'stderr':
-          stderr.push(chunk)
-          break
-        default:
-          throw new Error('Unsupported stream type')
-      }
-    }
-  }
-
-  beforeEach(() => {
-    stdout = new Readable()
-    stderr = new Readable()
-    stdin = new Writable()
-    debug = new GDB({ stdin, stdout, stderr })
+async function createGDB (example) {
+  let exec = await container.exec({
+    Cmd: ['gdb', '--interpreter=mi', `./${example}/main`],
+    AttachStdout: true,
+    AttachSterr: true,
+    AttachStdin: true,
+    Tty: false,
+    Detach: false
   })
 
-  describe('frame state (i.e. file and line of code)', () => {
-    it('saves frame', () => {
-      let stream = require('./data/frame-state-01')
-      emulate(stream)
-      expect(debug.frame).to.deep.equal({
-        file: 'hello.c',
-        line: '6'
-      })
+  let stream = await exec.start({
+    stream: true,
+    stdin: true,
+    stdout: true,
+    stderr: true
+  })
+
+  let stdout = new PassThrough()
+  let stderr = new PassThrough()
+  container.modem.demuxStream(stream, stdout, stderr)
+
+  return new GDB({ stdin: stream, stdout, stderr })
+}
+
+describe('state consistency', () => {
+  before(async () => {
+    // XXX: 404 Not Found
+    // await docker.pull('baygeldin/gdb-examples')
+    container = await docker.createContainer({
+      Image: 'baygeldin/gdb-examples',
+      Cmd: ['sleep', '100']
+    })
+    await container.start()
+  })
+
+  after(async () => {
+    await container.remove({ v: true, force: true })
+  })
+
+  it('saves frame correctly', async () => {
+    let gdb = await createGDB('hello-world')
+    let frameUpdate = new Promise((resolve, reject) => {
+      setTimeout(reject, 10000)
+      gdb.once('update:frame', reject)
     })
 
-    it('saves frame', () => {
-      let stream = require('./data/frame-state-02')
-      emulate(stream)
-      expect(debug.frame).to.deep.equal({
-        file: 'guess.c',
-        line: '6'
-      })
+    await gdb.break('main')
+    await gdb.run()
+    await frameUpdate
+
+    expect(gdb.frame).to.deep.equal({
+      file: '/examples/hello-world/hello.c',
+      line: '4'
     })
   })
 })

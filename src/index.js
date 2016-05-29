@@ -1,33 +1,7 @@
 import { EventEmitter } from 'events'
-import streamSplitter from 'stream-splitter'
-
-function splitArgs (str) {
-  // split a string by _outermost_ comma
-}
-
-function parseMI (args) {
-  let result = {}
-
-  for (let arg of args) {
-    arg = arg.split(/=(.+)/)
-    let data = arg[1].slice(1, -1)
-
-    switch (arg[1][0]) {
-      case '{':
-        result[arg[0]] = parseMI(splitArgs(data))
-        break
-      case '[':
-        result[arg[0]] = data.split(',') // should it be recursive?
-        break
-      case '"'
-        break
-      default:
-        result[arg[0]] = arg[1]
-    }
-  }
-
-  return result
-}
+import _ from 'highland'
+import deepEqual from 'deep-equal'
+import { parse } from './parser'
 
 // Exposed events:
 // update, update:breakpoints, update:watch, update:locals,
@@ -51,29 +25,19 @@ export default class GDB extends EventEmitter {
     this.stdout = options.stdout
     this.stderr = options.stderr
 
-    let processHandler = (data) => {
-      this.frame.line = data.args.frame.line
-      this.frame.file = data.args.frame.fullname
-    }
-
-    const handler = {
-     '~': outputHandler,
-     '&': commandHandler,
-     '*': processHandler,
-     '=': eventHandler,
-     '^': statusHandler
-    }
-
-    this.stdout.pipe(streamSplitter('\n')).on('token', (line) => {
-      let type = line[0]
-      let buffer = splitArgs(line.slice(1).replace('\\n', ''))
-      let data = { value: buffer[0], args: parseMI(buffer.slice(1)) }
-      handler[type](data)
-    })
+    _(this.stdout)
+      .map((chunk) => chunk.toString())
+      .splitBy('\n')
+      .each((line) => {
+        let parsed = parse(line)
+        let handler = this['_' + parsed.type + 'Handler']
+        if (handler) handler.call(this, parsed.data)
+      })
   }
 
-  async break () {
-    throw new Error('Not implemented')
+  async break (func) {
+    // TODO: support other options; check for success;
+    this._raw('-break-insert ' + func)
   }
 
   async stepIn () {
@@ -89,10 +53,30 @@ export default class GDB extends EventEmitter {
   }
 
   async run () {
-    throw new Error('Not implemented')
+    // TODO: check for success;
+    this._raw('-exec-run')
   }
 
   async continue () {
     throw new Error('Not implemented')
+  }
+
+  _execHandler (data) {
+    if (data.frame) {
+      let { line, fullname: file } = data.frame
+      this._update('frame', { line, file })
+    }
+  }
+
+  _update (domain, data) {
+    if (!deepEqual(this[domain], data)) {
+      this[domain] = data
+      this.emit('update:' + domain)
+      this.emit('update')
+    }
+  }
+
+  _raw (cmd) {
+    this.stdin.write(cmd + '\n', { binary: true })
   }
 }

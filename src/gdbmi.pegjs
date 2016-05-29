@@ -5,7 +5,7 @@
 }
 
 Line
-  = AsyncRecord / StreamRecord / ResultRecord / "(gdb)"
+  = AsyncRecord / StreamRecord / ResultRecord / "(gdb) "
   / (.*) { return { type: 'target', data: text() } }
 
 AsyncRecord
@@ -73,7 +73,7 @@ ResultClass
   = "done" / "running" / "connected" / "error" / "exit"
 
 AsyncClass
-  = "stopped"
+  = "stopped" / String
 
 Const "c-string"
   = "\"" chars:Char* "\"" { return chars.join('') }

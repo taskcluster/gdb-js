@@ -1,6 +1,5 @@
 /* eslint-disable no-undef */
 
-import 'babel-polyfill'
 import { expect } from 'chai'
 import { PassThrough } from 'stream'
 import Docker from 'dockerode-promise'
@@ -15,8 +14,7 @@ async function createGDB (example) {
     AttachStdout: true,
     AttachSterr: true,
     AttachStdin: true,
-    Tty: false,
-    Detach: false
+    Tty: false
   })
 
   let stream = await exec.start({
@@ -52,7 +50,7 @@ describe('state consistency', () => {
     let gdb = await createGDB('hello-world')
     let frameUpdate = new Promise((resolve, reject) => {
       setTimeout(reject, 10000)
-      gdb.once('update:frame', reject)
+      gdb.once('update:frame', resolve)
     })
 
     await gdb.break('main')

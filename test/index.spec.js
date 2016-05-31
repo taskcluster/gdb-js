@@ -6,7 +6,6 @@ import Docker from 'dockerode-promise'
 import GDB from '../lib'
 
 let container
-let docker = new Docker({ socketPath: '/var/run/docker.sock' })
 
 async function createGDB (example) {
   let exec = await container.exec({
@@ -35,15 +34,19 @@ describe('state consistency', () => {
   before(async () => {
     // XXX: 404 Not Found
     // await docker.pull('baygeldin/gdb-examples')
+    let docker = new Docker({ socketPath: '/var/run/docker.sock' })
+
     container = await docker.createContainer({
       Image: 'baygeldin/gdb-examples',
-      Cmd: ['sleep', '100']
+      OpenStdin: true
     })
+
+    await container.attach()
     await container.start()
   })
 
   after(async () => {
-    await container.remove({ v: true, force: true })
+    await container.remove({ force: true })
   })
 
   it('saves frame correctly', async () => {

@@ -2,7 +2,7 @@
   "name": "gdb-js",
   "version": "0.0.1",
   "description": "JavaScript interface for GDB.",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "prepublish": "npm run test && npm run standard && npm run release",
     "postpublish": "npm run clean",

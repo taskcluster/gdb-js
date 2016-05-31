@@ -4,16 +4,17 @@
   "description": "JavaScript interface for GDB.",
   "main": "index.js",
   "scripts": {
+    "prepublish": "npm run test && npm run standard && npm run release",
     "postpublish": "npm run clean",
     "postinstall": "npm run build && npm run parser-gen",
-    "test": "mocha",
+    "test": "npm run build && mocha",
     "parser-gen": "pegjs src/gdbmi.pegjs src/parser.js",
     "build": "babel src/ -d lib --source-maps --copy-files",
     "watch": "npm run build -- --watch",
     "clean": "rm -rf lib",
-    "lint": "standard --verbose {src,test,utils}/**/*.js *.js | snazzy",
+    "standard": "standard --verbose {src,test,utils}/**/*.js *.js",
+    "lint": "npm run standard | snazzy",
     "release": "export NODE_ENV=production && npm run build",
-    "prepare": "npm run test && npm run lint && npm run release",
     "seq-gen": "babel-node utils/seq-gen.js"
   },
   "keywords": [
@@ -44,7 +45,9 @@
     "mocha": "^2.5.1",
     "pegjs": "^0.9.0",
     "source-map-support": "^0.4.0",
-    "stream-splitter": "^0.3.2"
+    "stream-splitter": "^0.3.2",
+    "standard": "^7.1.0",
+    "babel-eslint": "^6.0.4"
   },
   "standard": {
     "parser": "babel-eslint"

@@ -8,12 +8,8 @@ import { parse } from './parser'
 // update:globals, update:frame, update:callstack
 
 export default class GDB extends EventEmitter {
-  constructor (options) {
+  constructor (childProcess) {
     super()
-
-    this.options = Object.assign(options, {
-      // defaults
-    })
 
     this.breakpoints = []
     this.locals = []
@@ -21,11 +17,9 @@ export default class GDB extends EventEmitter {
     this.callstack = []
     this.frame = {}
 
-    this.stdin = options.stdin
-    this.stdout = options.stdout
-    this.stderr = options.stderr
+    this.process = childProcess
 
-    _(this.stdout)
+    _(this.process.stdout)
       .map((chunk) => chunk.toString())
       .splitBy('\n')
       .each((line) => {
@@ -77,6 +71,6 @@ export default class GDB extends EventEmitter {
   }
 
   _raw (cmd) {
-    this.stdin.write(cmd + '\n', { binary: true })
+    this.process.stdin.write(cmd + '\n', { binary: true })
   }
 }

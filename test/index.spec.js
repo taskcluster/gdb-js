@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 
 import { expect } from 'chai'
+import { EventEmitter } from 'events'
 import { PassThrough } from 'stream'
 import Docker from 'dockerode-promise'
 import GDB from '../lib'
@@ -27,7 +28,13 @@ async function createGDB (example) {
   let stderr = new PassThrough()
   container.modem.demuxStream(stream, stdout, stderr)
 
-  return new GDB({ stdin: stream, stdout, stderr })
+  let child = new EventEmitter()
+  Object.assign(child, { stdin: stream, stdout, stderr })
+  exec.inspect((err, data) => {
+    if (!err && ! data.Running) child.emit('exit', data.ExitCode)
+  })
+
+  return new GDB(child)
 }
 
 describe('state consistency', () => {

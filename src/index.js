@@ -3,10 +3,6 @@ import _ from 'highland'
 import deepEqual from 'deep-equal'
 import { parse } from './parser'
 
-// Exposed events:
-// update, update:breakpoints, update:watch, update:locals,
-// update:globals, update:frame, update:callstack
-
 export default class GDB extends EventEmitter {
   constructor (childProcess) {
     super()
@@ -35,12 +31,28 @@ export default class GDB extends EventEmitter {
       .each((msg) => this[`_${msg.type}Handler`](msg))
   }
 
-  async break (func) {
-    // TODO: support other options;
+  async break (file, pos) {
+    let breakpoint = this.breakpoints.find((bp) =>
+      (bp.file === file) && (bp.line === pos || bp.func === pos))
+
+    if (breakpoint) return breakpoint
+
     try {
-      let result = await this._raw('-break-insert ' + func)
-      this._update('breakpoints', { /* some obj that represents a bp */ })
-      return result
+      let { data: { bkpt: result } } =
+        await this._raw(`-break-insert ${file}:${pos}`)
+
+      breakpoint = {
+        id: parseInt(result.number, 10),
+        file: result.fullname,
+        line: parseInt(result.line, 10),
+        func: result.func,
+        status: true,
+        times: 0
+      }
+
+      this.breakpoints.push(breakpoint)
+      this._update('breakpoints')
+      return breakpoint
     } catch (e) {
       throw new Error('Error while inserting a breakpoint', e)
     }
@@ -82,8 +94,8 @@ export default class GDB extends EventEmitter {
   }
 
   _update (domain, data) {
-    if (!deepEqual(this[domain], data)) {
-      this[domain] = data
+    if (!data || !deepEqual(this[domain], data)) {
+      if (data) this[domain] = data
       this.emit('update:' + domain)
       this.emit('update')
     }

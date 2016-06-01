@@ -17,21 +17,33 @@ export default class GDB extends EventEmitter {
     this.callstack = []
     this.frame = {}
 
-    this.process = childProcess
+    this._process = childProcess
+    this._queue = _()
 
-    _(this.process.stdout)
+    let stream = _(this._process.stdout)
       .map((chunk) => chunk.toString())
       .splitBy('\n')
-      .each((line) => {
-        let parsed = parse(line)
-        let handler = this['_' + parsed.type + 'Handler']
-        if (handler) handler.call(this, parsed.data)
-      })
+      .map(parse)
+
+    stream.fork()
+      .filter((msg) => msg.type === 'result')
+      .zip(this._queue)
+      .each((msg) => this._resultHandler(...msg))
+
+    stream.fork()
+      .filter((msg) => ['exec'].includes(msg.type))
+      .each((msg) => this[`_${msg.type}Handler`](msg))
   }
 
   async break (func) {
-    // TODO: support other options; check for success;
-    this._raw('-break-insert ' + func)
+    // TODO: support other options;
+    try {
+      let result = await this._raw('-break-insert ' + func)
+      this._update('breakpoints', { /* some obj that represents a bp */ })
+      return result
+    } catch (e) {
+      throw new Error('Error while inserting a breakpoint', e)
+    }
   }
 
   async stepIn () {
@@ -47,19 +59,26 @@ export default class GDB extends EventEmitter {
   }
 
   async run () {
-    // TODO: check for success;
-    this._raw('-exec-run')
+    try {
+      await this._raw('-exec-run')
+    } catch (e) {
+      throw new Error('Error while running a program', e)
+    }
   }
 
   async continue () {
     throw new Error('Not implemented')
   }
 
-  _execHandler (data) {
+  _execHandler ({ state, data }) {
     if (data.frame) {
       let { line, fullname: file } = data.frame
       this._update('frame', { line, file })
     }
+  }
+
+  _resultHandler (res, req) {
+    res.state !== 'error' ? req.resolve(res) : req.reject(res)
   }
 
   _update (domain, data) {
@@ -71,6 +90,9 @@ export default class GDB extends EventEmitter {
   }
 
   _raw (cmd) {
-    this.process.stdin.write(cmd + '\n', { binary: true })
+    this._process.stdin.write(cmd + '\n', { binary: true })
+    return new Promise((resolve, reject) => {
+      this._queue.write({ cmd, resolve, reject })
+    })
   }
 }

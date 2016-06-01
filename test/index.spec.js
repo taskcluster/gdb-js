@@ -31,7 +31,7 @@ async function createGDB (example) {
   let child = new EventEmitter()
   Object.assign(child, { stdin: stream, stdout, stderr })
   exec.inspect((err, data) => {
-    if (!err && ! data.Running) child.emit('exit', data.ExitCode)
+    if (!err && !data.Running) child.emit('exit', data.ExitCode)
   })
 
   return new GDB(child)

@@ -63,7 +63,7 @@ describe('state consistency', () => {
       gdb.once('update:frame', resolve)
     })
 
-    await gdb.break('main')
+    await gdb.break(4)
     await gdb.run()
     await frameUpdate
 
@@ -71,5 +71,25 @@ describe('state consistency', () => {
       file: '/examples/hello-world/hello.c',
       line: '4'
     })
+  })
+
+  it('saves breakpoints correctly', async () => {
+    let gdb = await createGDB('hello-world')
+    let breakpointsUpdate = new Promise((resolve, reject) => {
+      let times = 0
+      setTimeout(reject, 10000)
+      gdb.on('update:breakpoints', () => { if (++times === 2) resolve() })
+    })
+
+    let file = '/examples/hello-world/hello.c'
+
+    await gdb.break(file, 'main')
+    await gdb.break(file, 5)
+    await breakpointsUpdate
+
+    expect(gdb.breakpoints).to.deep.equal([
+      { id: 1, file, line: 4, func: 'main', status: true, times: 0 },
+      { id: 2, file, line: 5, func: 'main', status: true, times: 0 }
+    ])
   })
 })

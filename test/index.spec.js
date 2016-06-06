@@ -37,6 +37,8 @@ async function createGDB (example) {
   return new GDB(child)
 }
 
+// TESTS ARE TEMPORARILY DISABLED
+
 describe('state consistency', () => {
   before(async () => {
     // XXX: 404 Not Found
@@ -56,7 +58,7 @@ describe('state consistency', () => {
     await container.remove({ force: true })
   })
 
-  it('saves frame correctly', async () => {
+  xit('saves frame correctly', async () => {
     let gdb = await createGDB('hello-world')
     let frameUpdate = new Promise((resolve, reject) => {
       setTimeout(reject, 10000)
@@ -73,7 +75,7 @@ describe('state consistency', () => {
     })
   })
 
-  it('saves breakpoints correctly', async () => {
+  xit('saves breakpoints correctly', async () => {
     let gdb = await createGDB('hello-world')
     let breakpointsUpdate = new Promise((resolve, reject) => {
       let times = 0

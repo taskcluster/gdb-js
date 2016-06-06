@@ -5,7 +5,8 @@
 }
 
 Line
-  = AsyncRecord / StreamRecord / ResultRecord / "(gdb) "
+  = AsyncRecord / StreamRecord / ResultRecord
+  / "(gdb) " { type: 'prompt' }
   / (.*) { return { type: 'target', data: text() } }
 
 AsyncRecord
@@ -67,7 +68,7 @@ Tuple
 
 List
   = "[]" / "[" value:Value values:ValuesList "]" { return [value, ...values] }
-  / "[" result:Result results:ResultsList "]" { return makeResults([result, ...results]) }
+  / "[" result:Result results:ResultsList "]" { return [result, ...results] }
 
 ResultClass
   = "done" / "running" / "connected" / "error" / "exit"

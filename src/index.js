@@ -19,8 +19,15 @@ export default class GDB extends EventEmitter {
       .zip(this._queue)
       .each((msg) => {
         let { state, data } = msg[0]
-        let { resolve, reject } = msg[1]
-        state !== 'error' ? resolve(data) : reject(data.msg)
+        let { cmd, resolve, reject } = msg[1]
+        if (state !== 'error') {
+          let err = new Error(data.msg)
+          err.code = data.code
+          err.cmd = cmd
+          reject(err)
+        } else {
+          resolve(data)
+        }
       })
 
     stream.fork()

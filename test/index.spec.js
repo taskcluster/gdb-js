@@ -30,14 +30,13 @@ async function createGDB (example) {
 
   let child = new EventEmitter()
   Object.assign(child, { stdin: stream, stdout, stderr })
-  exec.inspect((err, data) => {
-    if (!err && !data.Running) child.emit('exit', data.ExitCode)
+  stream.on('end', async () => {
+    let data = await exec.inspect()
+    if (!data.Running) child.emit('exit', data.ExitCode)
   })
 
   return new GDB(child)
 }
-
-// TESTS ARE TEMPORARILY DISABLED
 
 describe('state consistency', () => {
   before(async () => {
@@ -58,6 +57,13 @@ describe('state consistency', () => {
     await container.remove({ force: true })
   })
 
+  it('return globals', async () => {
+    let gdb = await createGDB('factorial')
+    let globals = await gdb.globals()
+    expect(globals).to.deep.equal([{ value: '10', name: 'my_global' }])
+  })
+
+  // TESTS ARE TEMPORARILY DISABLED
   xit('saves frame correctly', async () => {
     let gdb = await createGDB('hello-world')
     let frameUpdate = new Promise((resolve, reject) => {

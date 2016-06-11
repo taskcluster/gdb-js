@@ -6,7 +6,7 @@
 
 Line
   = AsyncRecord / StreamRecord / ResultRecord
-  / "(gdb) " { type: 'prompt' }
+  / "(gdb) " { return { type: 'prompt' } }
   / (.*) { return { type: 'target', data: text() } }
 
 AsyncRecord
@@ -36,13 +36,13 @@ NotifyAsyncOutput
     }
 
 ConsoleStreamOutput
-  = "~" data:String { return { type: 'console', data } }
+  = "~" data:Const { return { type: 'console', data } }
 
 TargetStreamOutput
-  = "@" data:String { return { type: 'target', data } }
+  = "@" data:Const { return { type: 'target', data } }
 
 LogStreamOutput
-  = "&" data:String { return { type: 'log', data } }
+  = "&" data:Const { return { type: 'log', data } }
 
 AsyncOutput
   = state:AsyncClass results:ResultsList {

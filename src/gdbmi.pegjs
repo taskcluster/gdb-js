@@ -84,7 +84,12 @@ Char "char"
   / "\\" seq:Escaped { return seq }
 
 Escaped "escaped"
-  = ("\"" / "\\") / ("b" / "f" / "n" / "r" / "t") { return '\\' + text() }
+  = ("\"" / "\\")
+  / "b" { return '\b' }
+  / "f" { return '\f' }
+  / "n" { return '\n' }
+  / "r" { return '\r' }
+  / "t" { return '\t' }
 
 String "string"
   = [a-z-]+ { return text() }

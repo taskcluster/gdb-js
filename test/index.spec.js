@@ -38,7 +38,7 @@ async function createGDB (example) {
   return new GDB(child)
 }
 
-describe('state consistency', () => {
+describe('gdb-js', () => {
   before(async () => {
     // XXX: 404 Not Found
     // await docker.pull('baygeldin/gdb-examples')
@@ -57,47 +57,11 @@ describe('state consistency', () => {
     await container.remove({ force: true })
   })
 
-  it('return globals', async () => {
+  it('returns all global variables', async () => {
     let gdb = await createGDB('factorial')
     let globals = await gdb.globals()
-    expect(globals).to.deep.equal([{ value: '10', name: 'my_global' }])
-  })
-
-  // TESTS ARE TEMPORARILY DISABLED
-  xit('saves frame correctly', async () => {
-    let gdb = await createGDB('hello-world')
-    let frameUpdate = new Promise((resolve, reject) => {
-      setTimeout(reject, 10000)
-      gdb.once('update:frame', resolve)
-    })
-
-    await gdb.break(4)
-    await gdb.run()
-    await frameUpdate
-
-    expect(gdb.frame).to.deep.equal({
-      file: '/examples/hello-world/hello.c',
-      line: '4'
-    })
-  })
-
-  xit('saves breakpoints correctly', async () => {
-    let gdb = await createGDB('hello-world')
-    let breakpointsUpdate = new Promise((resolve, reject) => {
-      let times = 0
-      setTimeout(reject, 10000)
-      gdb.on('update:breakpoints', () => { if (++times === 2) resolve() })
-    })
-
-    let file = '/examples/hello-world/hello.c'
-
-    await gdb.break(file, 'main')
-    await gdb.break(file, 5)
-    await breakpointsUpdate
-
-    expect(gdb.breakpoints).to.deep.equal([
-      { id: 1, file, line: 4, func: 'main', status: true, times: 0 },
-      { id: 2, file, line: 5, func: 'main', status: true, times: 0 }
+    expect(globals).to.deep.equal([
+      { value: '10', name: 'my_global', file: 'factorial.c', type: 'int' }
     ])
   })
 })

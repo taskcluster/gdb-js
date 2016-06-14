@@ -1,6 +1,14 @@
+import assert from 'assert'
+import createDebugger from 'debug'
 import { EventEmitter } from 'events'
 import _ from 'highland'
-import { parse } from './parser'
+import { parse as parseMI } from './mi-parser'
+import { parse as parseInfo } from './info-parser'
+import scripts from './scripts'
+
+const MAX_SCRIPT = 3500
+
+let debug = createDebugger('gdb-js')
 
 export default class GDB extends EventEmitter {
   constructor (childProcess) {
@@ -14,14 +22,17 @@ export default class GDB extends EventEmitter {
     let stream = _(this._process.stdout)
       .map((chunk) => chunk.toString())
       .splitBy('\n')
-      .map(parse)
+      .map(parseMI)
+
+    this._process.stdout.on('data', (data) => { debug(data.toString()) })
 
     stream.fork()
       .filter((msg) => msg.type === 'result')
       .zip(this._queue)
       .each((msg) => {
         let { state, data } = msg[0]
-        let { cmd, resolve, reject, cli } = msg[1]
+        let { cmd, interpreter, resolve, reject } = msg[1]
+
         if (state === 'error') {
           let msg = `Error while executing "${cmd}". ${data.msg}`
           let err = new Error(msg)
@@ -29,7 +40,11 @@ export default class GDB extends EventEmitter {
           err.cmd = cmd
           reject(err)
         } else {
-          resolve(cli ? cliOutput.reduce((prev, next) => prev + next) : data)
+          if (interpreter === 'cli') {
+            data = cliOutput.reduce((prev, next) => prev + next)
+          }
+          debug('Resolve: %s', JSON.stringify(data))
+          resolve(data)
         }
       })
 
@@ -50,7 +65,7 @@ export default class GDB extends EventEmitter {
   }
 
   async break (file, pos) {
-    let res = await this.exec(`-break-insert ${file}:${pos}`)
+    let res = await this.execMI(`-break-insert ${file}:${pos}`)
     return res.bkpt
   }
 
@@ -67,78 +82,80 @@ export default class GDB extends EventEmitter {
   }
 
   async next () {
-    await this.exec('-exec-next')
+    await this.execMI('-exec-next')
   }
 
   async run () {
-    await this.exec('-exec-run')
+    await this.execMI('-exec-run')
   }
 
   async continue () {
-    await this.exec('-exec-continue')
+    await this.execMI('-exec-continue')
   }
 
-  async locals () {
-    let res = await this.exec('-stack-list-variables 1')
-    return res.variables
+  async vars () {
+    let res = await this.execPy(scripts.vars)
+    return JSON.parse(res)
   }
 
   async globals () {
     if (!this._globals) {
-      let res = await this.exec('info variables', 'cli')
-
-      // Monkey parsing :)
-      this._globals = res
-        .slice(0, res.indexOf('\\n\\nNon-debugging'))
-        .split('\\n')
-        .filter((str) => str.slice(-1) === ';')
-        .map((str) => {
-          let arr = str.split(' ')
-          return { type: arr[0], name: arr[1].slice(0, -1) }
-        })
+      let res = await this.execCLI('info variables', 'cli')
+      this._globals = parseInfo(res)
     }
 
     let res = []
 
     for (let v of this._globals) {
       let value = await this.eval(v.name)
-      res.push({ value, name: v.name })
+      res.push(Object.assign({}, v, { value }))
+      debug(v, value)
     }
 
     return res
   }
 
   async callstack () {
-    let res = await this.exec('-stack-list-frames')
+    let res = await this.execMI('-stack-list-frames')
     return res.stack.map((frame) => frame.value)
   }
 
   async sourceFiles () {
-    let res = await this.exec('-file-list-exec-source-files')
+    let res = await this.execMI('-file-list-exec-source-files')
     return res.files
   }
 
   async eval (expr) {
-    let res = await this.exec('-data-evaluate-expression ' + expr)
+    let res = await this.execMI('-data-evaluate-expression ' + expr)
     return res.value
   }
 
   async exit () {
-    await this.exec('-gdb-exit')
+    await this.execMI('-gdb-exit')
   }
 
-  async exec (cmd, interpreter) {
-    if (interpreter === 'cli') {
-      let command = `-interpreter-exec console "${cmd}"\n`
-      this._process.stdin.write(command, { binary: true })
-      return await new Promise((resolve, reject) => {
-        this._queue.write({ cmd, resolve, reject, cli: true })
-      })
-    } else {
-      this._process.stdin.write(cmd + '\n', { binary: true })
-      return await new Promise((resolve, reject) => {
-        this._queue.write({ cmd, resolve, reject })
-      })
-    }
+  async execPy (src) {
+    assert(src, 'You must provide a script')
+    assert(src.length < MAX_SCRIPT, 'Your script is too long')
+    let script = src.replace(/\\/g, '\\\\').replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r').replace(/\t/g, '\\t')
+    return await this.execCLI('python\\n' + script)
+  }
+
+  async execCLI (cmd) {
+    let command = `-interpreter-exec console "${cmd}"`
+    return await this._exec(command, 'cli')
+  }
+
+  async execMI (cmd) {
+    return await this._exec(cmd, 'mi')
+  }
+
+  async _exec (cmd, interpreter) {
+    debug('Command execution: %s', cmd)
+    this._process.stdin.write(cmd + '\n', { binary: true })
+    return await new Promise((resolve, reject) => {
+      this._queue.write({ cmd, interpreter, resolve, reject })
+    })
   }
 }

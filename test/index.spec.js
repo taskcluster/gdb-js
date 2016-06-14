@@ -64,4 +64,14 @@ describe('gdb-js', () => {
       { value: '10', name: 'my_global', file: 'factorial.c', type: 'int' }
     ])
   })
+
+  it('exec python', async () => {
+    let gdb = await createGDB('hello-world')
+    await gdb.break('hello.c', 'main')
+    await gdb.run()
+    let vars = await gdb.vars()
+    expect(vars).to.deep.equal([
+      { value: '0', name: 'i', scope: 'local', type: 'int' }
+    ])
+  })
 })

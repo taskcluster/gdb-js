@@ -39,4 +39,6 @@ Session.vim
 
 # Build results
 lib
-src/parser.js
+src/mi-parser.js
+src/info-parser.js
+src/scripts.json

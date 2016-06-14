@@ -8,19 +8,21 @@
     "postpublish": "npm run clean",
     "postinstall": "npm run build && npm run parser-gen",
     "test": "npm run build && mocha",
-    "parser-gen": "pegjs src/gdbmi.pegjs src/parser.js",
-    "build": "babel src/ -d lib --source-maps --copy-files",
+    "parser-gen": "pegjs src/gdbmi.pegjs src/mi-parser.js && pegjs src/info.pegjs src/info-parser.js",
+    "scripts-concat": "babel-node src/concat.js",
+    "compile": "babel src/ -d lib --source-maps --copy-files",
+    "build": "npm run parser-gen && npm run scripts-concat && npm run compile",
     "watch": "npm run build -- --watch",
-    "clean": "rm -rf lib",
+    "clean": "rm -rf lib && rm src/mi-parser.js src/info-parser.js src/scripts.json",
     "standard": "standard --verbose {src,test,utils}/**/*.js *.js",
     "lint": "npm run standard | snazzy",
-    "release": "export NODE_ENV=production && npm run build",
-    "seq-gen": "babel-node utils/seq-gen.js"
+    "release": "export NODE_ENV=production && npm run build"
   },
   "keywords": [
     "gdb",
     "debug",
-    "gdbmi"
+    "gdbmi",
+    "gdb-mi"
   ],
   "repository": {
     "type": "git",
@@ -52,6 +54,7 @@
     "parser": "babel-eslint"
   },
   "dependencies": {
+    "debug": "^2.2.0",
     "deep-equal": "^1.0.1",
     "highland": "^2.8.1"
   }

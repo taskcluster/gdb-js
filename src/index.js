@@ -7,61 +7,74 @@ import { parse as parseInfo } from './info-parser'
 import scripts from './scripts'
 
 const MAX_SCRIPT = 3500
+const TOKEN = 'GDBJS^'
 
-let debug = createDebugger('gdb-js')
+let debugCLIResluts = createDebugger('gdb-js:results:cli')
+let debugMIResluts = createDebugger('gdb-js:results:mi')
+let debugOutput = createDebugger('gdb-js:output')
+let debugInput = createDebugger('gdb-js:input')
 
 export default class GDB extends EventEmitter {
-  constructor (childProcess) {
+  constructor (childProcess, options) {
     super()
+
+    this.options = Object.assign({}, options, { token: TOKEN })
 
     this._process = childProcess
     this._queue = _()
-
-    let cliOutput = []
+    this._token = this.options.token
 
     let stream = _(this._process.stdout)
       .map((chunk) => chunk.toString())
       .splitBy('\n')
+      .tap(debugOutput)
       .map(parseMI)
 
-    this._process.stdout.on('data', (data) => { debug(data.toString()) })
-
     stream.fork()
+      .filter((msg) => !['result', 'log'].includes(msg.type))
+      // exec, notify, status, console and target records are emitted
+      .each((msg) => { this.emit(msg.state || msg.type, msg.data) })
+
+    // Here, the stream should NOT be forked, but observed instead!
+    // It's important, because zipping streams that are forked from
+    // the single source may cause blocking.
+    let cliOutput = stream.observe()
+      .filter((msg) => msg.type === 'console' && msg.data.startsWith(this._token))
+      .map((msg) => msg.data.slice(this._token.length))
+      .tap(debugCLIResluts)
+
+    let results = stream.fork()
       .filter((msg) => msg.type === 'result')
       .zip(this._queue)
-      .each((msg) => {
-        let { state, data } = msg[0]
-        let { cmd, interpreter, resolve, reject } = msg[1]
+      .map((msg) => Object.assign({}, msg[0], msg[1]))
 
-        if (state === 'error') {
-          let msg = `Error while executing "${cmd}". ${data.msg}`
-          let err = new Error(msg)
-          err.code = data.code
-          err.cmd = cmd
-          reject(err)
-        } else {
-          if (interpreter === 'cli') {
-            data = cliOutput.reduce((prev, next) => prev + next)
-          }
-          debug('Resolve: %s', JSON.stringify(data))
-          resolve(data)
-        }
+    results.fork()
+      .filter((msg) => msg.state === 'error')
+      .each((msg) => {
+        let { data, cmd, reject } = msg
+        let text = `Error while executing "${cmd}". ${data.msg}`
+        let err = new Error(text)
+        err.code = data.code
+        err.cmd = cmd
+        reject(err)
       })
 
-    stream.fork()
-      .filter((msg) => msg.type === 'prompt')
-      .each((msg) => { cliOutput = [] })
+    let success = results.fork()
+      .filter((msg) => msg.state !== 'error')
 
-    stream.fork()
-      .filter((msg) => msg.type === 'console')
-      .each((msg) => { cliOutput.push(msg.data) })
+    success.fork()
+      .filter((msg) => msg.interpreter === 'mi')
+      .tap((msg) => debugMIResluts(msg.data))
+      .each((msg) => { msg.resolve(msg.data) })
 
-    stream.fork()
-      .filter((msg) => !['result', 'console', 'log'].includes(msg.type))
-      .each((msg) => {
-        // exec, notify, status and target output are emitted
-        this.emit(msg.state || msg.type, msg.data)
-      })
+    success.fork()
+      .filter((msg) => msg.interpreter === 'cli')
+      .zip(cliOutput)
+      .each((msg) => { msg[0].resolve(msg[1]) })
+  }
+
+  async init () {
+    for (let script of scripts) await this.execPy(script.src)
   }
 
   async break (file, pos) {
@@ -69,16 +82,16 @@ export default class GDB extends EventEmitter {
     return res.bkpt
   }
 
-  async removeBreak () {
-    // await this.exec('-whatever-...')
+  async removeBreak (id) {
+    await this.execMI('-break-delete ' + id)
   }
 
   async stepIn () {
-    // await this.exec('-exec-...')
+    await this.execMI('-exec-step')
   }
 
   async stepOut () {
-    // await this.exec('-exec-...')
+    await this.execMI('-exec-finish')
   }
 
   async next () {
@@ -94,22 +107,27 @@ export default class GDB extends EventEmitter {
   }
 
   async vars () {
-    let res = await this.execPy(scripts.vars)
+    let res = await this.execCLI('info context')
     return JSON.parse(res)
   }
 
   async globals () {
     if (!this._globals) {
-      let res = await this.execCLI('info variables', 'cli')
+      // Getting all globals is currently only possible
+      // through parsing the symbol table. Symbol table is
+      // exported to Python only partially, thus we need
+      // to parse it manually.
+      let res = await this.execCLI('info variables')
       this._globals = parseInfo(res)
     }
 
     let res = []
 
     for (let v of this._globals) {
+      // TODO: instead of making multiple requests
+      // it's better to do it with a single python function
       let value = await this.eval(v.name)
       res.push(Object.assign({}, v, { value }))
-      debug(v, value)
     }
 
     return res
@@ -136,15 +154,14 @@ export default class GDB extends EventEmitter {
 
   async execPy (src) {
     assert(src, 'You must provide a script')
-    assert(src.length < MAX_SCRIPT, 'Your script is too long')
     let script = src.replace(/\\/g, '\\\\').replace(/\n/g, '\\n')
-      .replace(/\r/g, '\\r').replace(/\t/g, '\\t')
-    return await this.execCLI('python\\n' + script)
+      .replace(/\r/g, '\\r').replace(/\t/g, '\\t').replace(/"/g, '\\"')
+    assert(script.length < MAX_SCRIPT, 'Your script is too long')
+    return await this._exec(`-interpreter-exec console "python\\n${script}"`, 'mi')
   }
 
   async execCLI (cmd) {
-    let command = `-interpreter-exec console "${cmd}"`
-    return await this._exec(command, 'cli')
+    return await this._exec(`-interpreter-exec console "concat ${this._token} ${cmd}"`, 'cli')
   }
 
   async execMI (cmd) {
@@ -152,7 +169,7 @@ export default class GDB extends EventEmitter {
   }
 
   async _exec (cmd, interpreter) {
-    debug('Command execution: %s', cmd)
+    debugInput(cmd)
     this._process.stdin.write(cmd + '\n', { binary: true })
     return await new Promise((resolve, reject) => {
       this._queue.write({ cmd, interpreter, resolve, reject })

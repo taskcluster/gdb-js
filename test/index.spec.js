@@ -35,7 +35,7 @@ async function createGDB (example) {
     if (!data.Running) child.emit('exit', data.ExitCode)
   })
 
-  return new GDB(child)
+  return new GDB(child, { token: 'GDBJS^' })
 }
 
 describe('gdb-js', () => {
@@ -57,21 +57,102 @@ describe('gdb-js', () => {
     await container.remove({ force: true })
   })
 
+  it('executes mi commands and return results', async () => {
+    let gdb = await createGDB('hello-world')
+    let { features } = await gdb.execMI('-list-features')
+    expect(features).to.include('python')
+  })
+
+  it('executes cli commands and returns results', async () => {
+    let gdb = await createGDB('hello-world')
+    await gdb.init()
+    let res = await gdb.execCLI('echo Hello World!')
+    expect(res).to.equal('Hello World!')
+  })
+
+  it('executes custom python code', async () => {
+    let gdb = await createGDB('hello-world')
+    await gdb.execPy('print("Hello World!")')
+  })
+
+  it('inserts a breakpoint', async () => {
+    let gdb = await createGDB('hello-world')
+    let bp = await gdb.break('hello.c', 4)
+    let bpHit = new Promise((resolve, reject) => {
+      gdb.once('stopped', (data) => {
+        let err = new Error('No breakpoint hit')
+        if (data.reason !== 'breakpoint-hit') reject(err)
+        resolve(data)
+      })
+    })
+    await gdb.run()
+    let hit = await bpHit
+    expect(hit.bkptno).to.equal(bp.number)
+  })
+
+  it('removes a breakpoint', async () => {
+    let gdb = await createGDB('hello-world')
+    let bp = await gdb.break('hello.c', 'main')
+    await gdb.removeBreak(bp.number)
+  })
+
+  it('returns callstack', async () => {
+    let gdb = await createGDB('factorial')
+    await gdb.break('factorial.c', 'factorial')
+    await gdb.run()
+    let res = await gdb.callstack()
+    res = res.map(({ level, func, file, line }) => ({ level, func, file, line }))
+    expect(res).to.deep.equal([
+      { level: '0', func: 'factorial', file: 'factorial.c', line: '14' },
+      { level: '1', func: 'main', file: 'factorial.c', line: '8' }
+    ])
+  })
+
+  it('returns list of source files', async () => {
+    let gdb = await createGDB('factorial')
+    let res = await gdb.sourceFiles()
+    expect(res).to.deep.equal([
+      { file: 'factorial.c', fullname: '/examples/factorial/factorial.c' }
+    ])
+  })
+
+  it('evaluates the expression', async () => {
+    let gdb = await createGDB('hello-world')
+    let res = await gdb.eval('0xdeadbeef')
+    expect(res).to.equal('3735928559')
+  })
+
+  it('fires stopped event', async () => {
+    let gdb = await createGDB('hello-world')
+    let stopped = new Promise((resolve, reject) => {
+      gdb.once('stopped', resolve)
+    })
+    await gdb.run()
+    await stopped
+  })
+
   it('returns all global variables', async () => {
     let gdb = await createGDB('factorial')
+    await gdb.init()
     let globals = await gdb.globals()
     expect(globals).to.deep.equal([
       { value: '10', name: 'my_global', file: 'factorial.c', type: 'int' }
     ])
   })
 
-  it('exec python', async () => {
+  it('returns all variables in the current context', async () => {
     let gdb = await createGDB('hello-world')
+    await gdb.init()
     await gdb.break('hello.c', 'main')
     await gdb.run()
     let vars = await gdb.vars()
     expect(vars).to.deep.equal([
       { value: '0', name: 'i', scope: 'local', type: 'int' }
     ])
+  })
+
+  it('can exit gdb', async () => {
+    let gdb = await createGDB('hello-world')
+    await gdb.exit()
   })
 })

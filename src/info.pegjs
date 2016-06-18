@@ -5,8 +5,9 @@ Output
 
 File
   = "File " name:[^\n]* "\n" vars:(type:String " " name:String ";\n" { return { type, name } })+ {
+    let filename = name.slice(0, -1).join('')
     return vars.map((v) => {
-        v.file = name.slice(0, -1).join('')
+        v.file = filename
         return v
       })
   }

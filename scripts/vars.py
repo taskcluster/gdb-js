@@ -4,7 +4,7 @@ import json
 
 
 class ListVariablesCommand(gdb.Command):
-    """Lists all variables in the current context and print JSON."""
+    """Lists all variables in the current context and prints JSON."""
 
     def __init__(self):
         super(ListVariablesCommand, self).__init__("info context",

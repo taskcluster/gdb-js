@@ -35,7 +35,7 @@ async function createGDB (example) {
     if (!data.Running) child.emit('exit', data.ExitCode)
   })
 
-  return new GDB(child, { token: 'GDBJS^' })
+  return new GDB(child)
 }
 
 describe('gdb-js', () => {
@@ -70,9 +70,11 @@ describe('gdb-js', () => {
     expect(res).to.equal('Hello World!')
   })
 
-  it('executes custom python code', async () => {
+  it('executes custom python code and returns results', async () => {
     let gdb = await createGDB('hello-world')
-    await gdb.execPy('print("Hello World!")')
+    await gdb.init()
+    let res = await gdb.execPy('print("Hello\\nWorld!")')
+    expect(res).to.equal('Hello\nWorld!\n')
   })
 
   it('inserts a breakpoint', async () => {
@@ -109,6 +111,7 @@ describe('gdb-js', () => {
   })
 
   it('returns list of source files', async () => {
+    // TODO: the example with multiple files will make more sense
     let gdb = await createGDB('factorial')
     let res = await gdb.sourceFiles()
     expect(res).to.deep.equal([

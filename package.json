@@ -24,7 +24,8 @@
     "gdb",
     "debug",
     "gdbmi",
-    "gdb-mi"
+    "gdb-mi",
+    "inspector"
   ],
   "repository": {
     "type": "git",
@@ -57,7 +58,6 @@
   },
   "dependencies": {
     "debug": "^2.2.0",
-    "deep-equal": "^1.0.1",
     "highland": "^2.8.1"
   }
 }

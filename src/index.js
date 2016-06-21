@@ -122,8 +122,8 @@ export default class GDB extends EventEmitter {
     if (!this._async) {
       this._process.kill('SIGINT')
     } else {
-      let options = typeof arg === 'number' ?
-        '--thread ' + arg : arg ? '--thread-group ' + arg : '--all'
+      let options = typeof arg === 'number'
+        ? '--thread ' + arg : arg ? '--thread-group ' + arg : '--all'
       await this.execMI('-exec-interrupt ' + options)
     }
   }
@@ -235,14 +235,13 @@ export default class GDB extends EventEmitter {
   async execMI (cmd, thread) {
     let parts = cmd.split(/ (.+)/)
     let options = parts.length > 1 ? parts[1] : ''
-    return await this._exec(thread ?
-      `${parts[0]} --thread ${thread} ${options}` : cmd, 'mi')
+    return await this._exec(thread ? `${parts[0]} --thread ${thread} ${options}` : cmd, 'mi')
   }
 
   async _exec (cmd, interpreter) {
     debugInput(cmd)
-    cmd = interpreter === 'cli' ?
-      `-interpreter-exec console "concat ${this._token} ${cmd}"` : cmd
+    cmd = interpreter === 'cli'
+      ? `-interpreter-exec console "concat ${this._token} ${cmd}"` : cmd
     this._process.stdin.write(cmd + '\n', { binary: true })
     return await new Promise((resolve, reject) => {
       this._queue.write({ cmd, interpreter, resolve, reject })

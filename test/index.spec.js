@@ -8,6 +8,13 @@ import GDB from '../lib'
 
 let container
 
+/**
+ * Create a GDB wrapper instance for the specified example.
+ *
+ * @param {string} example Name of the folder with example in the Docker container.
+ *
+ * @returns {GDB} GDB wrapper instance.
+ */
 async function createGDB (example) {
   let exec = await container.exec({
     Cmd: ['gdb', '--interpreter=mi', `./${example}/main`],
@@ -28,6 +35,7 @@ async function createGDB (example) {
   let stderr = new PassThrough()
   container.modem.demuxStream(stream, stdout, stderr)
 
+  // Emulation of a child process.
   let child = new EventEmitter()
   Object.assign(child, { stdin: stream, stdout, stderr })
   stream.on('end', async () => {
@@ -40,8 +48,6 @@ async function createGDB (example) {
 
 describe('gdb-js', () => {
   before(async () => {
-    // XXX: 404 Not Found
-    // await docker.pull('baygeldin/gdb-examples')
     let docker = new Docker({ socketPath: '/var/run/docker.sock' })
 
     container = await docker.createContainer({
@@ -49,6 +55,8 @@ describe('gdb-js', () => {
       OpenStdin: true
     })
 
+    // When we attach to the container it lives forever
+    // until we kill it manually. There's no need for a `sleep` hack.
     await container.attach()
     await container.start()
   })

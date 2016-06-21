@@ -38,7 +38,9 @@ node_modules
 Session.vim
 
 # Unneeded files
+docs
 test
 utils
 .babelrc
 .editorconfig
+jsdoc.json

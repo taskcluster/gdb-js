@@ -1,9 +1,11 @@
+sudo: required
+
 language: node_js
 
 services:
   - docker
 
-before_script:
+before_install:
   - docker pull baygeldin/gdb-examples
 
 node_js:

@@ -154,6 +154,20 @@ describe('gdb-js', () => {
     ])
   })
 
+  it('has support for multithreaded targets', async () => {
+    let gdb = await createGDB('tickets')
+    await gdb.init()
+    await gdb.enableAsync()
+    await gdb.break('tickets.c', 31)
+    await gdb.run()
+    await new Promise((resolve, reject) => {
+      gdb.once('stopped', resolve)
+    })
+    await gdb.interrupt()
+    let res = await gdb.threads()
+    expect(res.length).to.equal(6)
+  })
+
   it('can exit gdb', async () => {
     let gdb = await createGDB('hello-world')
     await gdb.exit()

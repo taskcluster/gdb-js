@@ -100,7 +100,12 @@ export default class GDB extends EventEmitter {
   }
 
   async enableAsync () {
-    await this.set('mi-async', 'on')
+    try {
+      await this.set('mi-async', 'on')
+    } catch (e) {
+      // For gdb <= 7.7.
+      await this.set('target-async', 'on')
+    }
     await this.set('non-stop', 'on')
     this._async = true
   }
@@ -114,7 +119,7 @@ export default class GDB extends EventEmitter {
   }
 
   async interrupt (arg) {
-    if (this._async) {
+    if (!this._async) {
       this._process.kill('SIGINT')
     } else {
       let options = typeof arg === 'number' ?
@@ -173,6 +178,8 @@ export default class GDB extends EventEmitter {
     return JSON.parse(res)
   }
 
+  // XXX: global information like source files and symbol tables
+  // makes more sense for thread groups than just threads actually...
   async globals (thread) {
     if (!this._globals) {
       // Getting all globals is currently only possible
@@ -200,8 +207,6 @@ export default class GDB extends EventEmitter {
     return res.stack.map((frame) => frame.value)
   }
 
-  // XXX: global information like sources and symbol tables
-  // makes more sense for thread groups than just threads actually...
   async sourceFiles (thread) {
     let res = await this.execMI('-file-list-exec-source-files', thread)
     return res.files

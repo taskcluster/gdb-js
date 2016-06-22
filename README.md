@@ -1,6 +1,6 @@
 # gdb-js [![Build Status](https://travis-ci.org/baygeldin/gdb-js.svg?branch=master)](https://travis-ci.org/baygeldin/gdb-js)
 
-Seamless GDB wrapper for Node.js (>= 0.12) and browser.  
+Seamless GDB wrapper for Node.js (>= 0.12) and the browser.  
 It can be used to build different kinds of frontends for GDB.
 
 ## Documentation
@@ -17,8 +17,8 @@ Reading the sources of tests is also useful.
 ## Considerations
 * GDB >= 7.3 is required.
 * GDB should support Python.
-* Although it's possible to use **gdb-js** in `all-stop` mode of GDB, it makes much more sense for a frontend to work within `non-stop` mode (together with `target-async`). So, it's recommended that `enableAsync` method should be called.
-* Execution of all CLI commands is possible only after calling `init` method which defines some custom supportive commands in GDB. However, you can load them (`scripts` folder in this repository) manually with `.gdbinit` for example.
+* Although it's possible to use **gdb-js** in the `all-stop` mode, it makes much more sense for a frontend to work with the `non-stop` mode (together with `target-async`). So, it's recommended that `enableAsync` method should be called.
+* Execution of all CLI commands is possible only after calling `init` method which defines some custom supportive commands in GDB. However, you can load them (`scripts` folder in the project repository) manually with `.gdbinit` for example.
 * **gdb-js** is a seamless wrapper. It means that it doesn't have any assumptions about your goals and doesn't do anything behind the scenes. So, if something is going wrong it's probably a problem with your GDB usage (i.e. the same problem can be reproduced within a bare console). Also, the results of any method is just a JSON representation of GDB/MI output or a string (if it's a CLI command). Any event has a one-to-one correspondance to GDB/MI events.
 * It's currently not posible to distingish target output and GDB output correctly. Thus, it's recommended to use `--tty` option with your GDB.
 * For browsers it makes sense to make use of utilities that expose process streams (i.e. stdin/stdout/stderr) through WebSockets.

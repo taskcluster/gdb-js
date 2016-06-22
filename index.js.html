@@ -1,4 +1,43 @@
-import assert from 'assert'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>index.js - Documentation</title>
+
+    <script src="scripts/prettify/prettify.js"></script>
+    <script src="scripts/prettify/lang-css.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc.css">
+</head>
+<body>
+
+<input type="checkbox" id="nav-trigger" class="nav-trigger" />
+<label for="nav-trigger" class="navicon-button x">
+  <div class="navicon"></div>
+</label>
+
+<label for="nav-trigger" class="overlay"></label>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="GDBError.html">GDBError</a></li><li><a href="GDB.html">GDB</a><ul class='methods'><li data-type='method'><a href="GDB.html#init">init</a></li><li data-type='method'><a href="GDB.html#set">set</a></li><li data-type='method'><a href="GDB.html#attachOnFork">attachOnFork</a></li><li data-type='method'><a href="GDB.html#enableAsync">enableAsync</a></li><li data-type='method'><a href="GDB.html#attach">attach</a></li><li data-type='method'><a href="GDB.html#detach">detach</a></li><li data-type='method'><a href="GDB.html#interrupt">interrupt</a></li><li data-type='method'><a href="GDB.html#threads">threads</a></li><li data-type='method'><a href="GDB.html#thread">thread</a></li><li data-type='method'><a href="GDB.html#threadGroups">threadGroups</a></li><li data-type='method'><a href="GDB.html#break">break</a></li><li data-type='method'><a href="GDB.html#removeBreak">removeBreak</a></li><li data-type='method'><a href="GDB.html#stepIn">stepIn</a></li><li data-type='method'><a href="GDB.html#stepOut">stepOut</a></li><li data-type='method'><a href="GDB.html#next">next</a></li><li data-type='method'><a href="GDB.html#run">run</a></li><li data-type='method'><a href="GDB.html#continue">continue</a></li><li data-type='method'><a href="GDB.html#vars">vars</a></li><li data-type='method'><a href="GDB.html#globals">globals</a></li><li data-type='method'><a href="GDB.html#callstack">callstack</a></li><li data-type='method'><a href="GDB.html#sourceFiles">sourceFiles</a></li><li data-type='method'><a href="GDB.html#eval">eval</a></li><li data-type='method'><a href="GDB.html#exit">exit</a></li><li data-type='method'><a href="GDB.html#execPy">execPy</a></li><li data-type='method'><a href="GDB.html#execCLI">execCLI</a></li><li data-type='method'><a href="GDB.html#execMI">execMI</a></li></ul></li></ul><h3>Events</h3><ul><li><a href="GDB.html#event:stopped">stopped</a></li><li><a href="GDB.html#event:running">running</a></li><li><a href="GDB.html#event:%255Bnotifications%255D">[notifications]</a></li><li><a href="GDB.html#event:%255Bstatus%255D">[status]</a></li><li><a href="GDB.html#event:console">console</a></li><li><a href="GDB.html#event:target">target</a></li></ul><h3><a href="global.html">Global</a></h3>
+</nav>
+
+<div id="main">
+    
+    <h1 class="page-title">index.js</h1>
+    
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>import assert from 'assert'
 import createDebugger from 'debug'
 import { EventEmitter } from 'events'
 import _ from 'highland'
@@ -9,8 +48,6 @@ import { parse as parseMI } from './mi-parser'
 import { parse as parseInfo } from './info-parser'
 // An array of python scripts (JSON file).
 import scripts from './scripts'
-
-export default GDB
 
 // The maximum size of a python script we can send to GDB using inline mode.
 const MAX_SCRIPT = 3500
@@ -48,7 +85,7 @@ class GDBError extends Error {
    * @param {number} [code] Error code.
    */
   constructor (cmd, msg, code) {
-    super()
+    super(msg)
 
     this.name = 'GDBError'
     /**
@@ -62,14 +99,13 @@ class GDBError extends Error {
      *
      * @type {string}
      **/
-    this.message = message
+    this.message = msg
     /**
      * Error code.
      *
      * @type {number}
      **/
     this.code = code
-    this.stack = (new Error()).stack
   }
 }
 
@@ -186,7 +222,7 @@ class GDB extends EventEmitter {
     let cliOutput = stream.observe()
       // We consider as the result of CLI operation
       // only those console records that starts with our token.
-      .filter((msg) => msg.type === 'console' && msg.data.startsWith(this._token))
+      .filter((msg) => msg.type === 'console' &amp;&amp; msg.data.startsWith(this._token))
       .map((msg) => msg.data.slice(this._token.length))
       .tap(debugCLIResluts)
 
@@ -280,7 +316,7 @@ class GDB extends EventEmitter {
     try {
       await this.set('mi-async', 'on')
     } catch (e) {
-      // For gdb <= 7.7 (which not support `mi-async`).
+      // For gdb &lt;= 7.7 (which not support `mi-async`).
       await this.set('target-async', 'on')
     }
     await this.set('non-stop', 'on')
@@ -335,7 +371,7 @@ class GDB extends EventEmitter {
    * Get the information about all the threads.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object[]>} A promise that resolves with an array of JSON
+   * @returns {Promise&lt;object[]>} A promise that resolves with an array of JSON
    *   representations of GDB/MI thread.
    */
   async threads () {
@@ -349,7 +385,7 @@ class GDB extends EventEmitter {
    * @param {number} id Thread number.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with a JSON
+   * @returns {Promise&lt;object>} A promise that resolves with a JSON
    *   representation of GDB/MI thread.
    */
   async thread (id) {
@@ -363,7 +399,7 @@ class GDB extends EventEmitter {
    * @param {boolean} all Display all available thread groups or not.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object[]>} A promise that resolves with an array
+   * @returns {Promise&lt;object[]>} A promise that resolves with an array
    * of JSON representations of GDB/MI thread groups.
    */
   async threadGroups (all) {
@@ -380,7 +416,7 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with a JSON
+   * @returns {Promise&lt;object>} A promise that resolves with a JSON
    * representation of GDB/MI breakpoint.
    */
   async break (file, pos, thread) {
@@ -476,7 +512,7 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<Variable[]>} A promise that resolves with an array of variables.
+   * @returns {Promise&lt;Variable[]>} A promise that resolves with an array of variables.
    */
   async vars (thread) {
     // `info context` is not a GDB command.
@@ -491,7 +527,7 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<Variable[]>} A promise that resolves with an array of variables.
+   * @returns {Promise&lt;Variable[]>} A promise that resolves with an array of variables.
    */
   async globals (thread) {
     // XXX: global information like source files and symbol tables
@@ -523,7 +559,7 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object[]>} A promise that resolves with an array
+   * @returns {Promise&lt;object[]>} A promise that resolves with an array
    * of JSON representations of GDB/MI frames.
    */
   async callstack (thread) {
@@ -537,7 +573,7 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object[]>} A promise that resolves with an array
+   * @returns {Promise&lt;object[]>} A promise that resolves with an array
    * of JSON representations of GDB/MI source files.
    */
   async sourceFiles (thread) {
@@ -551,7 +587,7 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<string>} A promise that resolves with the result of expression.
+   * @returns {Promise&lt;string>} A promise that resolves with the result of expression.
    */
   async eval (expr, thread) {
     let res = await this.execMI('-data-evaluate-expression ' + expr, thread)
@@ -576,12 +612,12 @@ class GDB extends EventEmitter {
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @throws {AssertationError} If your script is larger that the maximum script size it throws an error.
-   * @returns {Promise<string>} A promise that resolves with the output of python script execution.
+   * @returns {Promise&lt;string>} A promise that resolves with the output of python script execution.
    */
   async execPy (src, thread) {
     assert(src, 'You must provide a script')
     let script = escape(src)
-    assert(script.length < MAX_SCRIPT, 'Your script is too long')
+    assert(script.length &lt; MAX_SCRIPT, 'Your script is too long')
     return await this.execCLI(`python\\n${script}`, thread)
   }
 
@@ -592,7 +628,7 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<string>} A promise that resolves with the result of command execution.
+   * @returns {Promise&lt;string>} A promise that resolves with the result of command execution.
    */
   async execCLI (cmd, thread) {
     return await this._exec(thread ? `thread apply ${thread} ${cmd}` : cmd, 'cli')
@@ -605,7 +641,7 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with the result of command execution.
+   * @returns {Promise&lt;object>} A promise that resolves with the result of command execution.
    */
   async execMI (cmd, thread) {
     let parts = cmd.split(/ (.+)/)
@@ -623,7 +659,7 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with the result of command execution.
+   * @returns {Promise&lt;object>} A promise that resolves with the result of command execution.
    *
    * @ignore
    */
@@ -641,3 +677,25 @@ class GDB extends EventEmitter {
     })
   }
 }
+
+export default GDB
+
+</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.0</a> on Wed Jun 22 2016 05:28:03 GMT+0300 (MSK) using the <a href="https://github.com/clenemt/docdash">docdash</a> theme.
+</footer>
+
+<script>prettyPrint();</script>
+<script src="scripts/linenumber.js"></script>
+</body>
+</html>

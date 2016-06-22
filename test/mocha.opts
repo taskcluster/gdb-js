@@ -1,4 +1,0 @@
---require source-map-support/register
---require babel-polyfill
---compilers js:babel-core/register
---timeout 40s

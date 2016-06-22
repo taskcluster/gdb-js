@@ -10,8 +10,6 @@ import { parse as parseInfo } from './info-parser'
 // An array of python scripts (JSON file).
 import scripts from './scripts'
 
-export default GDB
-
 // The maximum size of a python script we can send to GDB using inline mode.
 const MAX_SCRIPT = 3500
 // Default prefix for results of CLI commands.
@@ -48,7 +46,7 @@ class GDBError extends Error {
    * @param {number} [code] Error code.
    */
   constructor (cmd, msg, code) {
-    super()
+    super(msg)
 
     this.name = 'GDBError'
     /**
@@ -62,14 +60,13 @@ class GDBError extends Error {
      *
      * @type {string}
      **/
-    this.message = message
+    this.message = msg
     /**
      * Error code.
      *
      * @type {number}
      **/
     this.code = code
-    this.stack = (new Error()).stack
   }
 }
 
@@ -641,3 +638,6 @@ class GDB extends EventEmitter {
     })
   }
 }
+
+export default GDB
+

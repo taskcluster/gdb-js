@@ -7,10 +7,9 @@ class ListVariablesCommand(gdb.Command):
     """Lists all variables in the current context and prints JSON."""
 
     def __init__(self):
-        super(ListVariablesCommand, self).__init__("info context",
+        super(ListVariablesCommand, self).__init__("gdbjs-context",
                                                    gdb.COMMAND_STACK,
-                                                   gdb.COMPLETE_NONE,
-                                                   True)
+                                                   gdb.COMPLETE_NONE)
 
     def invoke(self, arg, from_tty):
         frame = gdb.selected_frame()
@@ -30,6 +29,7 @@ class ListVariablesCommand(gdb.Command):
                     })
             block = block.superblock
         sys.stdout.write(json.dumps(variables))
+        sys.stdout.flush()
 
 ListVariablesCommand()
 

@@ -6,7 +6,7 @@ class ConcatCommand(gdb.Command):
     """Executes a command and print concatenated results with a prefix."""
 
     def __init__(self):
-        super(ConcatCommand, self).__init__("concat", gdb.COMMAND_USER)
+        super(ConcatCommand, self).__init__("gdbjs-concat", gdb.COMMAND_USER)
 
     def invoke(self, arg, from_tty):
         pair = arg.partition(' ')

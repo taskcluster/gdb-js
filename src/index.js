@@ -474,9 +474,7 @@ class GDB extends EventEmitter {
    * @returns {Promise<Variable[]>} A promise that resolves with an array of variables.
    */
   async vars (thread) {
-    // `info context` is not a GDB command.
-    // It's a command that `init` method defines.
-    let res = await this.execCLI('info context', thread)
+    let res = await this.execCLI('gdbjs-context', thread)
     return JSON.parse(res)
   }
 
@@ -626,7 +624,7 @@ class GDB extends EventEmitter {
     // in the `init` method. `concat` makes it possible to view whole output of a CLI command
     // in the single console record.
     cmd = interpreter === 'cli'
-      ? `-interpreter-exec console "concat ${this._token} ${cmd}"` : cmd
+      ? `-interpreter-exec console "gdbjs-concat ${this._token} ${cmd}"` : cmd
     this._process.stdin.write(cmd + '\n', { binary: true })
     return await new Promise((resolve, reject) => {
       this._queue.write({ cmd, interpreter, resolve, reject })

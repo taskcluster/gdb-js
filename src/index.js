@@ -10,8 +10,6 @@ import { parse as parseInfo } from './info-parser'
 // An array of python scripts (JSON file).
 import scripts from './scripts'
 
-// The maximum size of a python script we can send to GDB using inline mode.
-const MAX_SCRIPT = 3500
 // Default prefix for results of CLI commands.
 const TOKEN = 'GDBJS^'
 
@@ -572,14 +570,11 @@ class GDB extends EventEmitter {
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @throws {AssertationError} If your script is larger that the maximum script size it throws an error.
    * @returns {Promise<string>} A promise that resolves with the output of python script execution.
    */
   async execPy (src, thread) {
     assert(src, 'You must provide a script')
-    let script = escape(src)
-    assert(script.length < MAX_SCRIPT, 'Your script is too long')
-    return await this.execCLI(`python\\n${script}`, thread)
+    return await this.execCLI(`python\\n${escape(src)}`, thread)
   }
 
   /**

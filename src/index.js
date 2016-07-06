@@ -379,7 +379,8 @@ class GDB extends EventEmitter {
    * representation of GDB/MI breakpoint.
    */
   async break (file, pos, thread) {
-    let res = await this.execMI(`-break-insert ${file}:${pos}`, thread)
+    let opt = thread ? '-p ' + thread : ''
+    let res = await this.execMI(`-break-insert ${opt} ${file}:${pos}`)
     return res.bkpt
   }
 

@@ -1,25 +1,27 @@
 {
   "name": "gdb-js",
   "version": "0.0.1",
+  "author": "Alexander Baygeldin <a.baygeldin@gmail.com>",
   "description": "JavaScript interface for GDB.",
+  "license": "MPL-2.0",
   "main": "lib/index.js",
   "scripts": {
-    "prepublish": "npm run test && npm run standard && npm run release",
-    "postpublish": "npm run clean",
-    "postinstall": "npm run build && npm run parser-gen",
     "test": "npm run build && npm run mocha",
+    "prepublish": "npm run release && npm run mocha && npm run standard",
+    "postpublish": "npm run clean",
+    "postinstall": "npm run build",
     "docs": "jsdoc -c jsdoc.json",
     "light-test": "npm run compile && npm run mocha",
-    "mocha": "DEBUG=gdb-js:* mocha",
     "parser-gen": "pegjs src/gdbmi.pegjs lib/mi-parser.js && pegjs src/info.pegjs lib/info-parser.js",
     "scripts-concat": "babel-node utils/concat.js scripts lib/scripts.json",
     "compile": "babel src/ -d lib --source-maps --copy-files",
-    "build": "npm run compile && npm run parser-gen && npm run scripts-concat",
-    "watch": "npm run build -- --watch",
-    "clean": "rm -rf lib",
+    "build": "npm run parser-gen && npm run scripts-concat && npm run compile",
+    "watch": "npm run build -- -- --watch",
+    "release": "export NODE_ENV=production && npm run build",
+    "mocha": "DEBUG=gdb-js:* mocha",
     "standard": "standard --verbose {src,test,utils}/**/*.js *.js",
     "lint": "npm run standard | snazzy",
-    "release": "export NODE_ENV=production && npm run build"
+    "clean": "rm -rf lib"
   },
   "keywords": [
     "gdb",
@@ -36,8 +38,6 @@
     "url": "https://github.com/baygeldin/gdb-js/issues"
   },
   "homepage": "https://github.com/baygeldin/gdb-js#readme",
-  "author": "Alexander Baygeldin",
-  "license": "MPL-2.0",
   "devDependencies": {
     "babel-cli": "^6.8.0",
     "babel-core": "^6.8.0",

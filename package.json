@@ -7,7 +7,7 @@
   "main": "lib/index.js",
   "scripts": {
     "test": "npm run build && npm run mocha",
-    "prepublish": "npm run release && npm run mocha && npm run standard",
+    "prepublish": "npm run release && npm run mocha && npm run lint",
     "postpublish": "npm run clean",
     "postinstall": "npm run build",
     "docs": "jsdoc -c jsdoc.json",
@@ -15,12 +15,11 @@
     "parser-gen": "pegjs src/gdbmi.pegjs lib/mi-parser.js && pegjs src/info.pegjs lib/info-parser.js",
     "scripts-concat": "babel-node utils/concat.js scripts lib/scripts.json",
     "compile": "babel src/ -d lib --source-maps --copy-files",
-    "build": "npm run parser-gen && npm run scripts-concat && npm run compile",
-    "watch": "npm run build -- -- --watch",
+    "build": "npm run compile && npm run parser-gen && npm run scripts-concat",
+    "watch": "npm run compile -- --watch",
     "release": "export NODE_ENV=production && npm run build",
     "mocha": "DEBUG=gdb-js:* mocha",
-    "standard": "standard --verbose {src,test,utils}/**/*.js *.js",
-    "lint": "npm run standard | snazzy",
+    "lint": "standard --verbose {src,test,utils}/**/*.js *.js | snazzy",
     "clean": "rm -rf lib"
   },
   "keywords": [
@@ -55,6 +54,7 @@
     "jsdoc-strip-async-await": "^0.1.0",
     "mocha": "^2.5.1",
     "pegjs": "^0.9.0",
+    "snazzy": "^4.0.0",
     "source-map-support": "^0.4.0",
     "standard": "^7.1.0"
   },

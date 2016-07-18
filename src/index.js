@@ -586,7 +586,8 @@ class GDB extends EventEmitter {
    * @returns {Promise<string>} A promise that resolves with the result of command execution.
    */
   async execCLI (cmd, thread) {
-    return await this._exec(thread ? `thread apply ${thread} ${cmd}` : cmd, 'cli')
+    let res = await this._exec(thread ? `thread apply ${thread} ${cmd}` : cmd, 'cli')
+    return thread ? res.split('\n').slice(2).join('\n') : res
   }
 
   /**

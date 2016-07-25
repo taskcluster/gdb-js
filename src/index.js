@@ -453,7 +453,8 @@ class GDB extends EventEmitter {
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
    */
   async proceed (thread) {
-    await this.execMI('-exec-continue', thread)
+    await thread ? this.execMI('-exec-continue', thread)
+      : this.execMI('-exec-continue --all')
   }
 
   /**

@@ -162,7 +162,7 @@ class GDB extends EventEmitter {
 
     let stream = _(this._process.stdout)
       .map((chunk) => chunk.toString())
-      .splitBy('\n')
+      .splitBy(/\n|\r\n/)
       .tap(debugOutput)
       .map(parseMI)
 

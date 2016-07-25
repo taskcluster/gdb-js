@@ -378,7 +378,7 @@ class GDB extends EventEmitter {
    * @returns {Promise<object>} A promise that resolves with a JSON
    * representation of GDB/MI breakpoint.
    */
-  async break (file, pos, thread) {
+  async addBreak (file, pos, thread) {
     let opt = thread ? '-p ' + thread : ''
     let res = await this.execMI(`-break-insert ${opt} ${file}:${pos}`)
     return res.bkpt
@@ -445,14 +445,14 @@ class GDB extends EventEmitter {
   }
 
   /**
-   * Continue executeion.
+   * Continue execution.
    *
    * @param {number} [thread] A thread id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
    */
-  async continue (thread) {
+  async proceed (thread) {
     await this.execMI('-exec-continue', thread)
   }
 

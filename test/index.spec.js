@@ -87,7 +87,7 @@ describe('gdb-js', () => {
 
   it('inserts a breakpoint', async () => {
     let gdb = await createGDB('hello-world')
-    let bp = await gdb.break('hello.c', 4)
+    let bp = await gdb.addBreak('hello.c', 4)
     let bpHit = new Promise((resolve, reject) => {
       gdb.once('stopped', (data) => {
         let err = new Error('No breakpoint hit')
@@ -102,13 +102,13 @@ describe('gdb-js', () => {
 
   it('removes a breakpoint', async () => {
     let gdb = await createGDB('hello-world')
-    let bp = await gdb.break('hello.c', 'main')
+    let bp = await gdb.addBreak('hello.c', 'main')
     await gdb.removeBreak(bp.number)
   })
 
   it('returns callstack', async () => {
     let gdb = await createGDB('factorial')
-    await gdb.break('factorial.c', 'factorial')
+    await gdb.addBreak('factorial.c', 'factorial')
     await gdb.run()
     let res = await gdb.callstack()
     res = res.map(({ level, func, file, line }) => ({ level, func, file, line }))
@@ -154,7 +154,7 @@ describe('gdb-js', () => {
   it('returns all variables in the current context', async () => {
     let gdb = await createGDB('hello-world')
     await gdb.init()
-    await gdb.break('hello.c', 'main')
+    await gdb.addBreak('hello.c', 'main')
     await gdb.run()
     let vars = await gdb.vars()
     expect(vars).to.deep.equal([
@@ -166,7 +166,7 @@ describe('gdb-js', () => {
     let gdb = await createGDB('tickets')
     await gdb.init()
     await gdb.enableAsync()
-    await gdb.break('tickets.c', 31)
+    await gdb.addBreak('tickets.c', 31)
     await gdb.run()
     await new Promise((resolve, reject) => {
       gdb.once('stopped', resolve)

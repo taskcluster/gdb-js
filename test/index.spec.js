@@ -156,8 +156,8 @@ describe('gdb-js', () => {
     await gdb.init()
     await gdb.addBreak('hello.c', 'main')
     await gdb.run()
-    let vars = await gdb.vars()
-    expect(vars).to.deep.equal([
+    let context = await gdb.context()
+    expect(context).to.deep.equal([
       { value: '0', name: 'i', scope: 'local', type: 'int' }
     ])
   })

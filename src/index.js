@@ -226,7 +226,7 @@ class GDB extends EventEmitter {
   /**
    * Extend GDB CLI interface with some useful commands that are
    * necessary for executing some methods of this GDB wrapper
-   * (e.g. {@link GDB#vars|vars}, {@link GDB#execCLI|execCli}).
+   * (e.g. {@link GDB#context|context}, {@link GDB#execCLI|execCli}).
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -283,7 +283,7 @@ class GDB extends EventEmitter {
   }
 
   /**
-   * Attache a new target (inferior) to GDB.
+   * Attach a new target (inferior) to GDB.
    *
    * @param {number} pid Process id.
    *
@@ -475,7 +475,7 @@ class GDB extends EventEmitter {
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<Variable[]>} A promise that resolves with an array of variables.
    */
-  async vars (thread) {
+  async context (thread) {
     let res = await this.execCLI('gdbjs-context', thread)
     return JSON.parse(res)
   }

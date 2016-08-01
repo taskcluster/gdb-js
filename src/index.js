@@ -45,29 +45,6 @@ function escape (script) {
 }
 
 /**
- * Maps GDB/MI thread representation to Thread object.
- *
- * @param {object} obj The GDB/MI thread representation.
- * @returns {Thread} The Thread object
- *
- * @ignore
- */
-function toThread (obj) {
-  let thread = {
-    id: toInt(obj.id),
-    state: obj.state
-  }
-  if (obj.frame) {
-    thread.frame = {
-      file: obj.frame.fullname,
-      line: toInt(obj.frame.line),
-      level: toInt(obj.frame.level)
-    }
-  }
-  return thread
-}
-
-/**
  * A variable representation.
  *
  * @typedef {object} Variable
@@ -465,27 +442,33 @@ class GDB extends EventEmitter {
   }
 
   /**
-   * Get the information about all the threads.
+   * Get the information about all the threads or about specific thread.
+   *
+   * @param {Thread} [thread] The thread about which the information is needed.
+   *   If this parameter is absent, then information about all threads is returned.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<Thread[]>} A promise that resolves with an array of threads.
+   * @returns {Promise<Thread[]|Thread>} A promise that resolves with an array of threads
+   *   or a single thread.
    */
-  async threads () {
-    let { threads } = await this.execMI('-thread-info')
-    return threads.map((t) => toThread(t))
-  }
+  async threads (thread) {
+    let res = await this.execMI('-thread-info ' + thread ? thread.id : '')
+    let threads = res.threads.map((t) => {
+      let thread = {
+        id: toInt(t.id),
+        state: t.state
+      }
+      if (t.frame) {
+        thread.frame = {
+          file: t.frame.fullname,
+          line: toInt(t.frame.line),
+          level: toInt(t.frame.level)
+        }
+      }
+      return thread
+    })
 
-  /**
-   * Get the information about specific thread.
-   *
-   * @param {Thread} thread The thread about which the information is needed.
-   *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<Thread>} A promise that resolves with a thread.
-   */
-  async thread (thread) {
-    let { threads } = await this.execMI('-thread-info ' + thread.id)
-    return toThread(threads[0])
+    return thread ? threads[0] : threads
   }
 
   /**

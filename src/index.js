@@ -3,6 +3,7 @@ import createDebugger from 'debug'
 import { EventEmitter } from 'events'
 import _ from 'highland'
 
+import GDBError from './error.js'
 // Parser for the GDB/MI output syntax.
 import { parse as parseMI } from './mi-parser'
 // Parser for the output of `info` GDB command.
@@ -19,10 +20,23 @@ let debugOutput = createDebugger('gdb-js:output')
 let debugInput = createDebugger('gdb-js:input')
 
 /**
+ * Converts string to integer.
+ *
+ * @param {string} str The input string.
+ * @returns {number} The output integer.
+ *
+ * @ignore
+ */
+function toInt (str) {
+  return parseInt(str, 10)
+}
+
+/**
  * Escapes symbols in python code so that we can send it using inline mode.
  *
- * @param {string} script Python script.
- * @returns {string} Escaped python script.
+ * @param {string} script The Python script.
+ * @returns {string} The escaped python script.
+ *
  * @ignore
  */
 function escape (script) {
@@ -31,92 +45,170 @@ function escape (script) {
 }
 
 /**
- * Class representing an internal GDB error.
+ * Maps GDB/MI thread representation to Thread object.
  *
- * @extends Error
+ * @param {object} obj The GDB/MI thread representation.
+ * @returns {Thread} The Thread object
+ *
+ * @ignore
  */
-class GDBError extends Error {
-  /**
-   * Create a GDBError.
-   *
-   * @param {string} cmd Command that led to this error.
-   * @param {string} msg Error message.
-   * @param {number} [code] Error code.
-   */
-  constructor (cmd, msg, code) {
-    super(msg)
-
-    this.name = 'GDBError'
-    /**
-     * Command that led to this error.
-     *
-     * @type {string}
-     **/
-    this.command = cmd
-    /**
-     * Error message.
-     *
-     * @type {string}
-     **/
-    this.message = msg
-    /**
-     * Error code.
-     *
-     * @type {number}
-     **/
-    this.code = code
+function toThread (obj) {
+  let thread = {
+    id: toInt(obj.id),
+    state: obj.state
   }
+  if (obj.frame) {
+    thread.frame = {
+      file: obj.frame.fullname,
+      line: toInt(obj.frame.line),
+      level: toInt(obj.frame.level)
+    }
+  }
+  return thread
 }
 
 /**
+ * A variable representation.
+ *
+ * @typedef {object} Variable
+ * @property {string} name The name of the variable.
+ * @property {string} type The type of the variable.
+ * @property {string} scope The scope of the variable.
+ * @property {string} value The value of the variable.
+ */
+
+/**
+ * A thread representation.
+ *
+ * @typedef {object} Thread
+ * @property {number} id The thread ID.
+ * @property {ThreadGroup} [group] The thread group.
+ * @property {string} [stopped] The thread status (e.g. `stopped`).
+ * @property {Frame} [frame] The frame where thread is currently on.
+ */
+
+/**
+ * A thread-group representation.
+ *
+ * @typedef {object} ThreadGroup
+ * @property {string} id The thread-group ID.
+ * @property {string} [executable] The executable of target.
+ * @property {number} [pid] The PID of the thread-group.
+ */
+
+/**
+ * A frame representation.
+ *
+ * @typedef {object} Frame
+ * @property {string} file The full path to a file.
+ * @property {number} line The line number.
+ * @property {number} [level] The level of stack frame.
+ */
+
+/**
+ * A breakpoint representation.
+ *
+ * @typedef {object} Breakpoint
+ * @property {number} id Breakpoint ID.
+ * @property {string} [file] The full path to a file in which breakpoint appears.
+ * @property {number} [line] The line number at which the breakpoint appears.
+ * @property {string} [func] The function in which the breakpoint appears.
+ * @property {number} [times] The number of times the breakpoint has been hit.
+ * @property {Thread} [thread] The thread for thread-specific breakpoints.
+ */
+
+/**
  * This event is emitted when target or one of its threads has stopped due to some reason.
- * The event object is a JSON representation of GDB/MI message.
+ * Note that `thread` property indicates the thread that caused the stop. In an all-stop mode
+ * all threads will be stopped.
  *
  * @event GDB#stopped
  * @type {object}
- * @property {string} reason The reason of why target has stopped.
+ * @property {string} reason The reason of why target has stopped (see
+ *   {@link https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI-Async-Records.html|
+ *   the official GDB/MI documentation}) for more information.
+ * @property {Thread} [thread] The thread that caused the stop.
+ * @property {Breakpoint} [breakpoint] Breakpoint is provided if the reason is
+ *   `breakpoint-hit`.
  */
 
 /**
  * This event is emitted when target changes state to running.
- * The event object is a JSON representation of GDB/MI message.
  *
  * @event GDB#running
  * @type {object}
+ * @property {Thread} [thread] The thread that has changed its state.
+ *   If it's not provided, all threads have changed their states.
  */
 
 /**
- * GDB emits all notifications from GDB. Please, see
- * {@link https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI-Async-Records.html|
+ * This event is emitted when new thread spawns.
+ *
+ * @event GDB#thread-created
+ * @type {Thread}
+ */
+
+/**
+ * This event is emitted when thread exits.
+ *
+ * @event GDB#thread-exited
+ * @type {Thread}
+ */
+
+/**
+ * Raw output of GDB/MI notify records.
+ * Contains supplementary information that the client should handle.
+ * Please, see {@link https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI-Async-Records.html|
  * the official GDB/MI documentation}.
  *
- * @example
- * gdb.on('thread-group-added', handler)
- * gdb.on('breakpoint-modified', handler)
- *
- * @event GDB#[notifications]
+ * @event GDB#notify
  * @type {object}
+ * @property {string} state The class of the notify record (e.g. `thread-created`).
+ * @property {object} data JSON representation of GDB/MI message.
  */
 
 /**
- * GDB emits all status notifications from GDB. Contains on-going status information
- * about the progress of a slow operation.
+ * Raw output of GDB/MI status records.
+ * Contains on-going status information about the progress of a slow operation.
  *
- * @event GDB#[status]
- * @type {Object}
+ * @event GDB#status
+ * @type {object}
+ * @property {string} state The class of the status record.
+ * @property {object} data JSON representation of GDB/MI message.
  */
 
 /**
- * Output that should be displayed as is in the console.
+ * Raw output of GDB/MI exec records.
+ * Contains asynchronous state change on the target.
+ *
+ * @event GDB#exec
+ * @type {object}
+ * @property {string} state The class of the exec record (e.g. `stopped`).
+ * @property {object} data JSON representation of GDB/MI message.
+ */
+
+/**
+ * Raw output of GDB/MI console records.
+ * The console output stream contains text that should be displayed in the CLI console window.
  *
  * @event GDB#console
  * @type {string}
  */
 
 /**
- * Output produced by the target program. Please, note that it's currently impossible
+ * Raw output of GDB/MI log records.
+ * The log stream contains debugging messages being produced by gdb's internals.
+ *
+ * @event GDB#log
+ * @type {string}
+ */
+
+/**
+ * Raw output of GDB/MI target records.
+ * The target output stream contains any textual output from the running target.
+ * Please, note that it's currently impossible
  * to distinguish the target and the MI output correctly due to a bug in GDB/MI. Thus,
- * it's recommended to use `--tty` option with your GDB.
+ * it's recommended to use `--tty` option with your GDB process.
  *
  * @event GDB#target
  * @type {string}
@@ -138,13 +230,6 @@ class GDB extends EventEmitter {
    *   `kill` method that is able to send signals (such as `SIGINT`).
    * @param {object} [options] An options object.
    * @param {string} [options.token] Prefix for the results of CLI commands.
-   *
-   * @fires GDB#stopped
-   * @fires GDB#running
-   * @fires GDB#[noifications]
-   * @fires GDB#[status]
-   * @fires GDB#console
-   * @fires GDB#target
    */
   constructor (childProcess, options) {
     super()
@@ -162,7 +247,7 @@ class GDB extends EventEmitter {
 
     let stream = _(this._process.stdout)
       .map((chunk) => chunk.toString())
-      .splitBy(/\n|\r\n/)
+      .splitBy(/\r\n|\n/)
       .tap(debugOutput)
       .map(parseMI)
 
@@ -170,10 +255,62 @@ class GDB extends EventEmitter {
     // be emitted and the results which we then zip with the sent commands.
     // Results can be either result records or console records with the specified prefix.
 
+    // Emitting raw stream records.
     stream.fork()
-      .filter((msg) => !['result', 'log'].includes(msg.type))
-      // Only exec, notify, status, console and target records are emitted.
-      .each((msg) => { this.emit(msg.state || msg.type, msg.data) })
+      .filter((msg) => ['console', 'target', 'log'].includes(msg.type))
+      .each((msg) => { this.emit(msg.type, msg.data) })
+
+    // Emitting raw async records.
+    stream.fork()
+      .filter((msg) => ['exec', 'notify', 'status'].includes(msg.type))
+      .each((msg) => { this.emit(msg.type, { state: msg.state, data: msg.data }) })
+
+    // Emitting defined events.
+    stream.fork()
+      .filter((msg) => msg.state === 'stopped')
+      .each((msg) => {
+        let { data } = msg
+        let thread = data['thread-id']
+        let event = { reason: data.reason }
+        if (thread) {
+          event.thread = {
+            id: toInt(thread),
+            frame: {
+              file: data.frame.fullname,
+              line: toInt(data.frame.line)
+            }
+          }
+        }
+        if (data.reason === 'breakpoint-hit') {
+          event.breakpoint = {
+            id: toInt(data.bkptno)
+          }
+        }
+        this.emit('stopped', event)
+      })
+
+    stream.fork()
+      .filter((msg) => msg.state === 'running')
+      .each((msg) => {
+        let event = {}
+        if (msg['thread-id'] !== 'all') {
+          event.thread = {
+            id: toInt(msg['thread-id'])
+          }
+        }
+        this.emit('running', event)
+      })
+
+    stream.fork()
+      .filter((msg) => ['thread-created', 'thread-exited'].includes(msg.state))
+      .each((msg) => {
+        this.emit(msg.state, {
+          id: toInt(msg.id),
+          group: {
+            id: msg['group-id']
+          }
+        })
+      })
 
     // Here, the stream should NOT be forked, but observed instead!
     // It's important, because zipping streams that are forked from
@@ -195,7 +332,7 @@ class GDB extends EventEmitter {
       .each((msg) => {
         let { data, cmd, reject } = msg
         let text = `Error while executing "${cmd}". ${data.msg}`
-        let err = new GDBError(cmd, text, parseInt(data.code, 10))
+        let err = new GDBError(cmd, text, toInt(data.code))
         reject(err)
       })
 
@@ -226,7 +363,7 @@ class GDB extends EventEmitter {
   /**
    * Extend GDB CLI interface with some useful commands that are
    * necessary for executing some methods of this GDB wrapper
-   * (e.g. {@link GDB#context|context}, {@link GDB#execCLI|execCli}).
+   * (e.g. {@link GDB#context|context}, {@link GDB#execCLI|execCLI}).
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -241,8 +378,8 @@ class GDB extends EventEmitter {
   /**
    * Set internal GDB variable.
    *
-   * @param {string} param Name of GDB variable.
-   * @param {string} value Value of GDB variable.
+   * @param {string} param The name of a GDB variable.
+   * @param {string} value The value of a GDB variable.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -266,7 +403,7 @@ class GDB extends EventEmitter {
 
   /**
    * Enable async and non-stop modes in GDB. This mode is *highly* recommended!
-   * Also, it changes the behaviour of {@link GDB#interrupt|interrupt} method.
+   * Also, it changes the behaviour of the {@link GDB#interrupt|interrupt} method.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -285,7 +422,7 @@ class GDB extends EventEmitter {
   /**
    * Attach a new target (inferior) to GDB.
    *
-   * @param {number} pid Process id.
+   * @param {number} pid The process id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -297,7 +434,7 @@ class GDB extends EventEmitter {
   /**
    * Detache a target (inferior) from GDB.
    *
-   * @param {number} pid Process id.
+   * @param {number} pid The process id.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -311,17 +448,18 @@ class GDB extends EventEmitter {
    * it interrupts all threads. In non-stop mode it can interrupt only specific thread or
    * a thread group.
    *
-   * @param {number|string} [arg] Thread number or thread-group id.
+   * @param {Thread|ThreadGroup} [thread] The thread or the thread-group to interrupt.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
    */
-  async interrupt (arg) {
+  async interrupt (thread) {
     if (!this._async) {
       this._process.kill('SIGINT')
     } else {
-      let options = typeof arg === 'number'
-        ? '--thread ' + arg : arg ? '--thread-group ' + arg : '--all'
+      let id = thread ? thread.id : null
+      let options = typeof id === 'number'
+        ? '--thread ' + id : id ? '--thread-group ' + id : '--all'
       await this.execMI('-exec-interrupt ' + options)
     }
   }
@@ -330,26 +468,24 @@ class GDB extends EventEmitter {
    * Get the information about all the threads.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object[]>} A promise that resolves with an array of JSON
-   *   representations of GDB/MI thread.
+   * @returns {Promise<Thread[]>} A promise that resolves with an array of threads.
    */
   async threads () {
-    let res = await this.execMI('-thread-info')
-    return res.threads
+    let { threads } = await this.execMI('-thread-info')
+    return threads.map((t) => toThread(t))
   }
 
   /**
    * Get the information about specific thread.
    *
-   * @param {number} id Thread number.
+   * @param {Thread} thread The thread about which the information is needed.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with a JSON
-   *   representation of GDB/MI thread.
+   * @returns {Promise<Thread>} A promise that resolves with a thread.
    */
-  async thread (id) {
-    let res = await this.execMI('-thread-info ' + id)
-    return res.threads[1]
+  async thread (thread) {
+    let { threads } = await this.execMI('-thread-info ' + thread.id)
+    return toThread(threads[0])
   }
 
   /**
@@ -358,48 +494,57 @@ class GDB extends EventEmitter {
    * @param {boolean} all Display all available thread groups or not.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object[]>} A promise that resolves with an array
-   * of JSON representations of GDB/MI thread groups.
+   * @returns {Promise<ThreadGroup[]>} A promise that resolves with an array thread groups.
    */
   async threadGroups (all) {
     let options = all ? '--available' : ''
-    let res = await this.execMI('-list-thread-groups ' + options)
-    return res.groups
+    let { groups } = await this.execMI('-list-thread-groups ' + options)
+    return groups.map((g) => ({
+      id: g.id,
+      pid: toInt(g.pid),
+      executable: g.executable
+    }))
   }
 
   /**
    * Insert a breakpoint at the specified position.
    *
-   * @param {string} file A full name or just a file name.
-   * @param {number|string} pos A function name or a line number.
-   * @param {number} [thread] A thread id.
+   * @param {string} file The full name or just a file name.
+   * @param {number|string} pos The function name or a line number.
+   * @param {Thread} [thread] The thread where breakpoint should be set.
+   *   If this field is absent, breakpoint applies to all threads.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with a JSON
-   * representation of GDB/MI breakpoint.
+   * @returns {Promise<Breakpoint>} A promise that resolves with a breakpoint.
    */
   async addBreak (file, pos, thread) {
     let opt = thread ? '-p ' + thread : ''
-    let res = await this.execMI(`-break-insert ${opt} ${file}:${pos}`)
-    return res.bkpt
+    let { bkpt } = await this.execMI(`-break-insert ${opt} ${file}:${pos}`)
+    return {
+      id: toInt(bkpt.number),
+      file: bkpt.fullname,
+      line: toInt(bkpt.line),
+      func: bkpt.func,
+      thread
+    }
   }
 
   /**
    * Removes a specific breakpoint.
    *
-   * @param {number} id A breakpoint id.
+   * @param {Breakpoint} [bp] The breakpoint.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
    */
-  async removeBreak (id) {
-    await this.execMI('-break-delete ' + id)
+  async removeBreak (bp) {
+    await this.execMI('-break-delete ' + bp.id)
   }
 
   /**
    * Step in.
    *
-   * @param {number} [thread] A thread id.
+   * @param {Thread} [thread] The thread where the stepping should be done.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -411,7 +556,7 @@ class GDB extends EventEmitter {
   /**
    * Step out.
    *
-   * @param {number} [thread] A thread id.
+   * @param {Thread} [thread] The thread where the stepping should be done.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -423,7 +568,7 @@ class GDB extends EventEmitter {
   /**
    * Execute to the next line.
    *
-   * @param {number} [thread] A thread id.
+   * @param {Thread} [thread] The thread where the stepping should be done.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -435,19 +580,17 @@ class GDB extends EventEmitter {
   /**
    * Run the target.
    *
-   * @param {number} [thread] A thread id.
-   *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
    */
-  async run (thread) {
-    await this.execMI('-exec-run', thread)
+  async run () {
+    await this.execMI('-exec-run')
   }
 
   /**
    * Continue execution.
    *
-   * @param {number} [thread] A thread id.
+   * @param {Thread} [thread] The thread that should be continued.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
@@ -458,19 +601,10 @@ class GDB extends EventEmitter {
   }
 
   /**
-   * A variable representation.
-   * @typedef {object} Variable
-   * @property {string} name Name of the variable.
-   * @property {string} type Type of the variable.
-   * @property {string} scope Scope of the variable.
-   * @property {string} value Value of the variable.
-   */
-
-  /**
    * List all variables in the current context (i.e. all global, static, local
    * variables in the current file).
    *
-   * @param {number} [thread] A thread id.
+   * @param {Thread} [thread] The thread from which the context should be taken.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<Variable[]>} A promise that resolves with an array of variables.
@@ -483,20 +617,16 @@ class GDB extends EventEmitter {
   /**
    * List all global variables. It uses the symbol table to achieve this.
    *
-   * @param {number} [thread] A thread id.
-   *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<Variable[]>} A promise that resolves with an array of variables.
    */
-  async globals (thread) {
-    // XXX: global information like source files and symbol tables
-    // makes more sense for thread groups than just threads actually...
+  async globals () {
     if (!this._globals) {
       // Getting all globals is currently only possible
       // through parsing the symbol table. Symbol table is
       // exported to Python only partially, thus we need
       // to parse it manually.
-      let res = await this.execCLI('info variables', thread)
+      let res = await this.execCLI('info variables')
       this._globals = parseInfo(res)
     }
 
@@ -505,7 +635,7 @@ class GDB extends EventEmitter {
     for (let v of this._globals) {
       // TODO: instead of making multiple requests
       // it's better to do it with a single python function
-      let value = await this.eval(v.name)
+      let value = await this.evaluate(v.name)
       res.push(Object.assign({}, v, { value }))
     }
 
@@ -515,42 +645,43 @@ class GDB extends EventEmitter {
   /**
    * Get the callstack.
    *
-   * @param {number} [thread] A thread id.
+   * @param {Thread} [thread] The thread from which the callstack should be taken.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object[]>} A promise that resolves with an array
-   * of JSON representations of GDB/MI frames.
+   * @returns {Promise<Frame[]>} A promise that resolves with an array of frames.
    */
   async callstack (thread) {
-    let res = await this.execMI('-stack-list-frames', thread)
-    return res.stack.map((frame) => frame.value)
+    let { stack } = await this.execMI('-stack-list-frames', thread)
+    return stack.map((f) => ({
+      file: f.value.fullname,
+      line: toInt(f.value.line),
+      level: toInt(f.value.level)
+    }))
   }
 
   /**
    * Get information about source files. Please, note that it doesn't return sources.
    *
-   * @param {number} [thread] A thread id.
-   *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object[]>} A promise that resolves with an array
-   * of JSON representations of GDB/MI source files.
+   * @returns {Promise<string[]>} A promise that resolves with an array of source files.
    */
-  async sourceFiles (thread) {
-    let res = await this.execMI('-file-list-exec-source-files', thread)
-    return res.files
+  async sourceFiles () {
+    let { files } = await this.execMI('-file-list-exec-source-files')
+    return files.map((f) => f.fullname)
   }
 
   /**
    * Evaluate a GDB expression.
    *
-   * @param {number} [thread] A thread id.
+   * @param {string} expr The expression to evaluate.
+   * @param {Thread} [thread] The thread where the expression should be evaluated.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<string>} A promise that resolves with the result of expression.
    */
-  async eval (expr, thread) {
-    let res = await this.execMI('-data-evaluate-expression ' + expr, thread)
-    return res.value
+  async evaluate (expr, thread) {
+    let { value } = await this.execMI('-data-evaluate-expression ' + expr, thread)
+    return value
   }
 
   /**
@@ -566,66 +697,71 @@ class GDB extends EventEmitter {
   /**
    * Execute a custom python script.
    *
-   * @param {string} src Python script.
-   * @param {number} [thread] A thread id.
+   * @param {string} src The python script.
+   * @param {Thread} [thread] The thread where the script should be executed.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<string>} A promise that resolves with the output of python script execution.
+   * @returns {Promise<string>} A promise that resolves with the output of
+   *   python script execution.
    */
   async execPy (src, thread) {
-    assert(src, 'You must provide a script')
+    assert(src, 'You must provide a script.')
     return await this.execCLI(`python\\n${escape(src)}`, thread)
   }
 
   /**
    * Execute a CLI command.
    *
-   * @param {string} cmd CLI command.
-   * @param {number} [thread] A thread id.
+   * @param {string} cmd The CLI command.
+   * @param {Thread} [thread] The thread where the command should be executed.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<string>} A promise that resolves with the result of command execution.
    */
   async execCLI (cmd, thread) {
-    let res = await this._exec(thread ? `thread apply ${thread} ${cmd}` : cmd, 'cli')
+    let res = await this._exec(thread ? `thread apply ${thread.id} ${cmd}` : cmd, 'cli')
+    // `thread apply` command may prepend two extraneous lines to the output.
     return thread ? res.split('\n').slice(2).join('\n') : res
   }
 
   /**
    * Execute a MI command.
    *
-   * @param {string} cmd MI command.
-   * @param {number} [thread] A thread id.
+   * @param {string} cmd The MI command.
+   * @param {Thread} [thread] The thread where the command should be executed.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with the result of command execution.
+   * @returns {Promise<object>} A promise that resolves with the JSON representation
+   *   of the result of command execution.
    */
   async execMI (cmd, thread) {
     let parts = cmd.split(/ (.+)/)
     let options = parts.length > 1 ? parts[1] : ''
     // Most of GDB/MI commands support `--thread` option.
     // However, in order to work it should be the first option.
-    return await this._exec(thread ? `${parts[0]} --thread ${thread} ${options}` : cmd, 'mi')
+    return await this._exec(thread ?
+      `${parts[0]} --thread ${thread.id} ${options}` : cmd, 'mi')
   }
 
   /**
    * Internal method that executes a MI command and add it to the queue where it
    * waits for the results of execution.
    *
-   * @param {string} cmd MI command.
-   * @param {number} [thread] A thread id.
+   * @param {string} cmd The command.
+   * @param {string} interpreter The interpreter that should execute the command.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with the result of command execution.
+   * @returns {Promise<object>} A promise that resolves with the JSON representation
+   *   of the result of command execution.
    *
    * @ignore
    */
   async _exec (cmd, interpreter) {
     debugInput(cmd)
     // All CLI commands are actually executed within MI interface.
-    // And all of them are executed with the support of `concat` command that is defined
-    // in the `init` method. `concat` makes it possible to view whole output of a CLI command
-    // in the single console record.
+    // And all of them are executed with the support of `gdbjs-concat` command that is defined
+    // in the `init` method. `gdbjs-concat` makes it possible to view whole output
+    // of a CLI command in the single console record.
     cmd = interpreter === 'cli'
       ? `-interpreter-exec console "gdbjs-concat ${this._token} ${cmd}"` : cmd
     this._process.stdin.write(cmd + '\n', { binary: true })

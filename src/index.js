@@ -722,8 +722,8 @@ class GDB extends EventEmitter {
     let options = parts.length > 1 ? parts[1] : ''
     // Most of GDB/MI commands support `--thread` option.
     // However, in order to work it should be the first option.
-    return await this._exec(thread ?
-      `${parts[0]} --thread ${thread.id} ${options}` : cmd, 'mi')
+    return await this._exec(thread
+      ? `${parts[0]} --thread ${thread.id} ${options}` : cmd, 'mi')
   }
 
   /**

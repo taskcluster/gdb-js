@@ -1,6 +1,6 @@
 {
   "source": {
-    "include": ["src/index.js", "README.md"]
+    "include": ["src/", "README.md"]
   },
   "plugins": [
     "node_modules/jsdoc-strip-async-await",

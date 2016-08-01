@@ -97,13 +97,13 @@ describe('gdb-js', () => {
     })
     await gdb.run()
     let hit = await bpHit
-    expect(hit.bkptno).to.equal(bp.number)
+    expect(hit.breakpoint.id).to.equal(bp.id)
   })
 
   it('removes a breakpoint', async () => {
     let gdb = await createGDB('hello-world')
     let bp = await gdb.addBreak('hello.c', 'main')
-    await gdb.removeBreak(bp.number)
+    await gdb.removeBreak(bp)
   })
 
   it('returns callstack', async () => {
@@ -111,10 +111,9 @@ describe('gdb-js', () => {
     await gdb.addBreak('factorial.c', 'factorial')
     await gdb.run()
     let res = await gdb.callstack()
-    res = res.map(({ level, func, file, line }) => ({ level, func, file, line }))
     expect(res).to.deep.equal([
-      { level: '0', func: 'factorial', file: 'factorial.c', line: '14' },
-      { level: '1', func: 'main', file: 'factorial.c', line: '8' }
+      { level: 0, file: '/examples/factorial/factorial.c', line: 14 },
+      { level: 1, file: '/examples/factorial/factorial.c', line: 8 }
     ])
   })
 
@@ -122,14 +121,12 @@ describe('gdb-js', () => {
     // TODO: the example with multiple files will make more sense
     let gdb = await createGDB('factorial')
     let res = await gdb.sourceFiles()
-    expect(res).to.deep.equal([
-      { file: 'factorial.c', fullname: '/examples/factorial/factorial.c' }
-    ])
+    expect(res).to.deep.equal(['/examples/factorial/factorial.c'])
   })
 
   it('evaluates the expression', async () => {
     let gdb = await createGDB('hello-world')
-    let res = await gdb.eval('0xdeadbeef')
+    let res = await gdb.evaluate('0xdeadbeef')
     expect(res).to.equal('3735928559')
   })
 
@@ -139,7 +136,8 @@ describe('gdb-js', () => {
       gdb.once('stopped', resolve)
     })
     await gdb.run()
-    await stopped
+    let res = await stopped
+    expect(res).to.deep.equal({ reason: 'exited-normally' })
   })
 
   it('returns all global variables', async () => {

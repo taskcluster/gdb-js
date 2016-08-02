@@ -3,15 +3,13 @@ import sys
 import json
 
 
-class ListVariablesCommand(gdb.Command):
+class ContextCommand(BaseCommand):
     """Lists all variables in the current context and prints JSON."""
 
     def __init__(self):
-        super(ListVariablesCommand, self).__init__("gdbjs-context",
-                                                   gdb.COMMAND_STACK,
-                                                   gdb.COMPLETE_NONE)
+        super(ContextCommand, self).__init__("context")
 
-    def invoke(self, arg, from_tty):
+    def action(self, arg, from_tty):
         frame = gdb.selected_frame()
         block = frame.block()
         variables = []
@@ -29,7 +27,5 @@ class ListVariablesCommand(gdb.Command):
                     })
             block = block.superblock
         sys.stdout.write(json.dumps(variables))
-        sys.stdout.flush()
 
-ListVariablesCommand()
-
+ContextCommand()

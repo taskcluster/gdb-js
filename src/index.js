@@ -244,7 +244,7 @@ class GDB extends EventEmitter {
 
     // Emitting defined events.
     stream.fork()
-      .filter((msg) => msg.state === 'stopped')
+      .filter((msg) => msg.type === 'exec' && msg.state === 'stopped')
       .each((msg) => {
         let { data } = msg
         let thread = data['thread-id']
@@ -267,24 +267,27 @@ class GDB extends EventEmitter {
       })
 
     stream.fork()
-      .filter((msg) => msg.state === 'running')
+      .filter((msg) => msg.type === 'exec' && msg.state === 'running')
       .each((msg) => {
+        let { data } = msg
         let event = {}
-        if (msg['thread-id'] !== 'all') {
+        if (data['thread-id'] !== 'all') {
           event.thread = {
-            id: toInt(msg['thread-id'])
+            id: toInt(data['thread-id'])
           }
         }
         this.emit('running', event)
       })
 
     stream.fork()
-      .filter((msg) => ['thread-created', 'thread-exited'].includes(msg.state))
+      .filter((msg) => msg.type === 'notify' &&
+        ['thread-created', 'thread-exited'].includes(msg.state))
       .each((msg) => {
-        this.emit(msg.state, {
-          id: toInt(msg.id),
+        let { state, data } = msg
+        this.emit(state, {
+          id: toInt(data.id),
           group: {
-            id: msg['group-id']
+            id: data['group-id']
           }
         })
       })
@@ -452,7 +455,7 @@ class GDB extends EventEmitter {
    *   or a single thread.
    */
   async threads (thread) {
-    let res = await this.execMI('-thread-info ' + thread ? thread.id : '')
+    let res = await this.execMI('-thread-info ' + (thread ? thread.id : ''))
     let threads = res.threads.map((t) => {
       let thread = {
         id: toInt(t.id),
@@ -574,6 +577,7 @@ class GDB extends EventEmitter {
    * Continue execution.
    *
    * @param {Thread} [thread] The thread that should be continued.
+   *   If this parameter is absent, all threads are continued.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.

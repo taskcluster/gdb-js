@@ -2,8 +2,6 @@ import path from 'path'
 import webpack from 'webpack'
 import nodeExternals from 'webpack-node-externals'
 
-const PRODUCTION = process.env.NODE_ENV === 'production'
-
 export default {
   entry: path.resolve('src/index.js'),
 
@@ -16,7 +14,9 @@ export default {
   plugins: [
     new webpack.NoErrorsPlugin(),
     new webpack.DefinePlugin({
-      NODE_ENV: JSON.stringify(process.env.NODE_ENV)
+      'process.env': {
+        'NODE_ENV': JSON.stringify(process.env.NODE_ENV)
+      }
     })
   ],
 
@@ -34,9 +34,7 @@ export default {
     }]
   },
 
-  externals: [nodeExternals(), 'gdb-js'],
-
-  postcss: () => [precss, autoprefixer],
+  externals: [nodeExternals()],
 
   devtool: 'source-map'
 }

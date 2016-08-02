@@ -10,6 +10,7 @@
     "prepublish": "npm run release && npm run test && npm run lint",
     "postpublish": "npm run clean",
     "postinstall": "npm run build",
+    "docker-pull": "docker pull baygeldin/gdb-examples",
     "docs": "jsdoc -c jsdoc.json",
     "build": "webpack",
     "watch": "npm run build -- --watch",

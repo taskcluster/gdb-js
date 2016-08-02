@@ -37,4 +37,3 @@ class GDBError extends Error {
 }
 
 export default GDBError
-

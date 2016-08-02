@@ -655,9 +655,12 @@ class GDB extends EventEmitter {
    * Get list of source files or a subset of source files that match
    * the regular expression. Please, note that it doesn't return sources.
    *
+   * @example
+   * let headers = await gdb.sourceFiles('\.h$')
+   *
    * @param {string} [pattern] The regular expression (see
-   * {@link https://docs.python.org/2/library/re.html|Python regex syntax}
-   * ). This option is useful when the project has a lot of files so that
+   * {@link https://docs.python.org/2/library/re.html|Python regex syntax}).
+   * This option is useful when the project has a lot of files so that
    * it's not desirable to send them all in one chunk along the wire.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
@@ -706,7 +709,8 @@ class GDB extends EventEmitter {
    * By the way, with this method you can define your own CLI commands and then call
    * them via {@link GDB#execCLI|execCLI} method. For more examples, see `scripts` folder
    * in the main repository and read
-   * {@link https://sourceware.org/gdb/current/onlinedocs/gdb/Python-API.html|official GDB Python API}.
+   * {@link https://sourceware.org/gdb/current/onlinedocs/gdb/Python-API.html|official GDB Python API}
+   * and {@link https://sourceware.org/gdb/wiki/PythonGdbTutorial|PythonGdbTutorial}.
    *
    * @example
    * let script = `
@@ -811,4 +815,3 @@ class GDB extends EventEmitter {
 // the same way due to messed up semantics.
 // It'll export `{ default: ... }` object.
 module.exports = GDB
-

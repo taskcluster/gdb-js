@@ -95,103 +95,6 @@ function escape (script) {
  */
 
 /**
- * This event is emitted when target or one of its threads has stopped due to some reason.
- * Note that `thread` property indicates the thread that caused the stop. In an all-stop mode
- * all threads will be stopped.
- *
- * @event GDB#stopped
- * @type {object}
- * @property {string} reason The reason of why target has stopped (see
- *   {@link https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI-Async-Records.html|
- *   the official GDB/MI documentation}) for more information.
- * @property {Thread} [thread] The thread that caused the stop.
- * @property {Breakpoint} [breakpoint] Breakpoint is provided if the reason is
- *   `breakpoint-hit`.
- */
-
-/**
- * This event is emitted when target changes state to running.
- *
- * @event GDB#running
- * @type {object}
- * @property {Thread} [thread] The thread that has changed its state.
- *   If it's not provided, all threads have changed their states.
- */
-
-/**
- * This event is emitted when new thread spawns.
- *
- * @event GDB#thread-created
- * @type {Thread}
- */
-
-/**
- * This event is emitted when thread exits.
- *
- * @event GDB#thread-exited
- * @type {Thread}
- */
-
-/**
- * Raw output of GDB/MI notify records.
- * Contains supplementary information that the client should handle.
- * Please, see {@link https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI-Async-Records.html|
- * the official GDB/MI documentation}.
- *
- * @event GDB#notify
- * @type {object}
- * @property {string} state The class of the notify record (e.g. `thread-created`).
- * @property {object} data JSON representation of GDB/MI message.
- */
-
-/**
- * Raw output of GDB/MI status records.
- * Contains on-going status information about the progress of a slow operation.
- *
- * @event GDB#status
- * @type {object}
- * @property {string} state The class of the status record.
- * @property {object} data JSON representation of GDB/MI message.
- */
-
-/**
- * Raw output of GDB/MI exec records.
- * Contains asynchronous state change on the target.
- *
- * @event GDB#exec
- * @type {object}
- * @property {string} state The class of the exec record (e.g. `stopped`).
- * @property {object} data JSON representation of GDB/MI message.
- */
-
-/**
- * Raw output of GDB/MI console records.
- * The console output stream contains text that should be displayed in the CLI console window.
- *
- * @event GDB#console
- * @type {string}
- */
-
-/**
- * Raw output of GDB/MI log records.
- * The log stream contains debugging messages being produced by gdb's internals.
- *
- * @event GDB#log
- * @type {string}
- */
-
-/**
- * Raw output of GDB/MI target records.
- * The target output stream contains any textual output from the running target.
- * Please, note that it's currently impossible
- * to distinguish the target and the MI output correctly due to a bug in GDB/MI. Thus,
- * it's recommended to use `--tty` option with your GDB process.
- *
- * @event GDB#target
- * @type {string}
- */
-
-/**
  * Class representing a GDB abstraction.
  *
  * @extends EventEmitter
@@ -206,7 +109,8 @@ class GDB extends EventEmitter {
    *   If you're using GDB all-stop mode, then it should also have implementation of
    *   `kill` method that is able to send signals (such as `SIGINT`).
    * @param {object} [options] An options object.
-   * @param {string} [options.token] Prefix for the results of CLI commands.
+   * @param {string} [options.token="GDBJS^"] Prefix for the results of CLI commands.
+   *   Please, see {@link GDB#execCLI|execCLI} for more information.
    */
   constructor (childProcess, options) {
     super()
@@ -233,16 +137,89 @@ class GDB extends EventEmitter {
     // Results can be either result records or console records with the specified prefix.
 
     // Emitting raw stream records.
+
+    /**
+     * Raw output of GDB/MI notify records.
+     * Contains supplementary information that the client should handle.
+     * Please, see
+     * {@link https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI-Async-Records.html|the official GDB/MI documentation}.
+     *
+     * @event GDB#notify
+     * @type {object}
+     * @property {string} state The class of the notify record (e.g. `thread-created`).
+     * @property {object} data JSON representation of GDB/MI message.
+     */
+
+    /**
+     * Raw output of GDB/MI status records.
+     * Contains on-going status information about the progress of a slow operation.
+     *
+     * @event GDB#status
+     * @type {object}
+     * @property {string} state The class of the status record.
+     * @property {object} data JSON representation of GDB/MI message.
+     */
+
+    /**
+     * Raw output of GDB/MI exec records.
+     * Contains asynchronous state change on the target.
+     *
+     * @event GDB#exec
+     * @type {object}
+     * @property {string} state The class of the exec record (e.g. `stopped`).
+     * @property {object} data JSON representation of GDB/MI message.
+     */
     stream.fork()
       .filter((msg) => ['console', 'target', 'log'].includes(msg.type))
       .each((msg) => { this.emit(msg.type, msg.data) })
 
     // Emitting raw async records.
+
+    /**
+     * Raw output of GDB/MI console records.
+     * The console output stream contains text that should be displayed in the CLI console window.
+     *
+     * @event GDB#console
+     * @type {string}
+     */
+
+    /**
+     * Raw output of GDB/MI log records.
+     * The log stream contains debugging messages being produced by gdb's internals.
+     *
+     * @event GDB#log
+     * @type {string}
+     */
+
+    /**
+     * Raw output of GDB/MI target records.
+     * The target output stream contains any textual output from the running target.
+     * Please, note that it's currently impossible
+     * to distinguish the target and the MI output correctly due to a bug in GDB/MI. Thus,
+     * it's recommended to use `--tty` option with your GDB process.
+     *
+     * @event GDB#target
+     * @type {string}
+     */
     stream.fork()
       .filter((msg) => ['exec', 'notify', 'status'].includes(msg.type))
       .each((msg) => { this.emit(msg.type, { state: msg.state, data: msg.data }) })
 
     // Emitting defined events.
+
+    /**
+     * This event is emitted when target or one of its threads has stopped due to some reason.
+     * Note that `thread` property indicates the thread that caused the stop. In an all-stop mode
+     * all threads will be stopped.
+     *
+     * @event GDB#stopped
+     * @type {object}
+     * @property {string} reason The reason of why target has stopped (see
+     *   {@link https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI-Async-Records.html|the official GDB/MI documentation}) for more information.
+     * @property {Thread} [thread] The thread that caused the stop.
+     * @property {Breakpoint} [breakpoint] Breakpoint is provided if the reason is
+     *   `breakpoint-hit`.
+     */
     stream.fork()
       .filter((msg) => msg.type === 'exec' && msg.state === 'stopped')
       .each((msg) => {
@@ -266,6 +243,14 @@ class GDB extends EventEmitter {
         this.emit('stopped', event)
       })
 
+    /**
+     * This event is emitted when target changes state to running.
+     *
+     * @event GDB#running
+     * @type {object}
+     * @property {Thread} [thread] The thread that has changed its state.
+     *   If it's not provided, all threads have changed their states.
+     */
     stream.fork()
       .filter((msg) => msg.type === 'exec' && msg.state === 'running')
       .each((msg) => {
@@ -279,6 +264,19 @@ class GDB extends EventEmitter {
         this.emit('running', event)
       })
 
+    /**
+     * This event is emitted when new thread spawns.
+     *
+     * @event GDB#thread-created
+     * @type {Thread}
+     */
+
+    /**
+     * This event is emitted when thread exits.
+     *
+     * @event GDB#thread-exited
+     * @type {Thread}
+     */
     stream.fork()
       .filter((msg) => msg.type === 'notify' &&
         ['thread-created', 'thread-exited'].includes(msg.state))
@@ -682,7 +680,33 @@ class GDB extends EventEmitter {
   }
 
   /**
-   * Execute a custom python script.
+   * Execute a custom python script. Internally it calls {@link GDB#execCLI|execCLI}
+   * method. Thus, everything about it applies to this method as well. So, if your
+   * python script is asynchronous and you're interested in its output, you should
+   * listen to {@link GDB#event:console|raw console output}. Here's the example below.
+   *
+   * By the way, with this method you can define your own CLI commands and then call
+   * them via {@link GDB#execCLI|execCLI} method. For more examples, see `scripts` folder
+   * in the main repository and read
+   * {@link https://sourceware.org/gdb/current/onlinedocs/gdb/Python-API.html|official GDB Python API}.
+   *
+   * @example
+   * let script = `
+   * import gdb
+   * import threading
+   *
+   *
+   * def foo():
+   *     sys.stdout.write('bar')
+   *     sys.stdout.flush()
+   *
+   * timer = threading.Timer(5, foo)
+   * timer.start()
+   * `
+   * gdb.on('console', (str) => {
+   *   if (str === 'bar') console.log('yep')
+   * })
+   * await gdb.execPy(script)
    *
    * @param {string} src The python script.
    * @param {Thread} [thread] The thread where the script should be executed.
@@ -697,7 +721,14 @@ class GDB extends EventEmitter {
   }
 
   /**
-   * Execute a CLI command.
+   * Execute a CLI command. Internally it calls `gdbjs-concat` CLI command that is
+   * defined in the {@link GDB#init|init} method. This command executes a given CLI
+   * command and puts its output to a single console record with a prepended prefix.
+   * Prepended prefix is the token that you can pass to a constructor of this class
+   * (defaults to `"GDBJS^"`). This is how GDB-JS is able to distinguish responses
+   * to your commands and random GDB/MI console records. Note that it will return
+   * only synchronous responses. If a CLI command is asynchronous and you are interested
+   * in its output, you should listen to {@link GDB#event:console|raw console output}.
    *
    * @param {string} cmd The CLI command.
    * @param {Thread} [thread] The thread where the command should be executed.

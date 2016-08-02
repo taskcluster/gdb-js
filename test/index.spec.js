@@ -125,12 +125,20 @@ describe('gdb-js', () => {
   })
 
   it('returns list of source files', async () => {
-    // TODO: the example with multiple files will make more sense
     let gdb = await createGDB('factorial')
     let res = await gdb.sourceFiles()
     await gdb.exit()
 
     expect(res).to.deep.equal(['/examples/factorial/factorial.c'])
+  })
+
+  it('searches for source files using regex', async () => {
+    let gdb = await createGDB('hello-world')
+    await gdb.init()
+    let res = await gdb.sourceFiles('hello.c$')
+    await gdb.exit()
+
+    expect(res).to.deep.equal(['/examples/hello-world/hello.c'])
   })
 
   it('evaluates the expression', async () => {

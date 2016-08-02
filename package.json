@@ -6,20 +6,15 @@
   "license": "MPL-2.0",
   "main": "lib/index.js",
   "scripts": {
-    "test": "npm run build && npm run mocha",
-    "prepublish": "npm run release && npm run mocha && npm run lint",
+    "test": "DEBUG=gdb-js:* mocha",
+    "prepublish": "npm run release && npm run test && npm run lint",
     "postpublish": "npm run clean",
     "postinstall": "npm run build",
     "docs": "jsdoc -c jsdoc.json",
-    "light-test": "npm run compile && npm run mocha",
-    "parser-gen": "pegjs src/gdbmi.pegjs lib/mi-parser.js && pegjs src/info.pegjs lib/info-parser.js",
-    "scripts-concat": "babel-node utils/concat.js scripts lib/scripts.json",
-    "compile": "babel src/ -d lib --source-maps --copy-files",
-    "build": "npm run compile && npm run parser-gen && npm run scripts-concat",
-    "watch": "npm run compile -- --watch",
+    "build": "webpack",
+    "watch": "npm run build -- --watch",
     "release": "export NODE_ENV=production && npm run build",
-    "mocha": "DEBUG=gdb-js:* mocha",
-    "lint": "standard --verbose {src,test,utils}/**/*.js *.js | snazzy",
+    "lint": "standard --verbose {src,test}/**/*.js *.js | snazzy",
     "clean": "rm -rf lib"
   },
   "keywords": [
@@ -38,7 +33,6 @@
   },
   "homepage": "https://github.com/baygeldin/gdb-js#readme",
   "devDependencies": {
-    "babel-cli": "^6.8.0",
     "babel-core": "^6.8.0",
     "babel-eslint": "^6.0.4",
     "babel-plugin-syntax-async-functions": "^6.5.0",
@@ -54,9 +48,13 @@
     "jsdoc-strip-async-await": "^0.1.0",
     "mocha": "^2.5.1",
     "pegjs": "^0.9.0",
+    "pegjs-loader": "^0.4.0",
+    "raw-loader": "^0.5.1",
     "snazzy": "^4.0.0",
     "source-map-support": "^0.4.0",
-    "standard": "^7.1.0"
+    "standard": "^7.1.0",
+    "webpack": "^1.13.1",
+    "webpack-node-externals": "^1.3.3"
   },
   "standard": {
     "parser": "babel-eslint"

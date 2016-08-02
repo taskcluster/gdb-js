@@ -3,13 +3,16 @@ import createDebugger from 'debug'
 import { EventEmitter } from 'events'
 import _ from 'highland'
 
+// Custom error class.
 import GDBError from './error.js'
 // Parser for the GDB/MI output syntax.
-import { parse as parseMI } from './mi-parser'
+import { parse as parseMI } from './parsers/gdbmi.pegjs'
 // Parser for the output of `info` GDB command.
-import { parse as parseInfo } from './info-parser'
-// An array of python scripts (JSON file).
-import scripts from './scripts'
+import { parse as parseInfo } from './parsers/info.pegjs'
+// Command that puts CLI output to a single console record.
+import concatCommand from './scripts/concat.py'
+// Command that lists all variables in the current context.
+import contextCommand from './scripts/context.py'
 
 // Default prefix for results of CLI commands.
 const TOKEN = 'GDBJS^'
@@ -347,9 +350,9 @@ class GDB extends EventEmitter {
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
    */
   async init () {
-    for (let script of scripts) {
-      let src = escape(script.src)
-      await this.execMI(`-interpreter-exec console "python\\n${src}"`)
+    let commands = [concatCommand, contextCommand]
+    for (let c of commands) {
+      await this.execMI(`-interpreter-exec console "python\\n${escape(c)}"`)
     }
   }
 
@@ -789,5 +792,8 @@ class GDB extends EventEmitter {
   }
 }
 
-export default GDB
+// XXX: `export default` won't work here
+// the same way due to messed up semantics.
+// It'll export `{ default: ... }` object.
+module.exports = GDB
 

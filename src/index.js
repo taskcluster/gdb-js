@@ -9,10 +9,14 @@ import GDBError from './error.js'
 import { parse as parseMI } from './parsers/gdbmi.pegjs'
 // Parser for the output of `info` GDB command.
 import { parse as parseInfo } from './parsers/info.pegjs'
+// Base class for custom GDB commands.
+import baseCommand from './scripts/base.py'
 // Command that puts CLI output to a single console record.
 import concatCommand from './scripts/concat.py'
 // Command that lists all variables in the current context.
 import contextCommand from './scripts/context.py'
+// Command that searches source files using regex.
+import searchCommand from './scripts/search.py'
 
 // Default prefix for results of CLI commands.
 const TOKEN = 'GDBJS^'
@@ -350,7 +354,7 @@ class GDB extends EventEmitter {
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
    */
   async init () {
-    let commands = [concatCommand, contextCommand]
+    let commands = [baseCommand, concatCommand, contextCommand, searchCommand]
     for (let c of commands) {
       await this.execMI(`-interpreter-exec console "python\\n${escape(c)}"`)
     }
@@ -648,14 +652,25 @@ class GDB extends EventEmitter {
   }
 
   /**
-   * Get information about source files. Please, note that it doesn't return sources.
+   * Get list of source files or a subset of source files that match
+   * the regular expression. Please, note that it doesn't return sources.
+   *
+   * @param {string} [pattern] The regular expression (see
+   * {@link https://docs.python.org/2/library/re.html|Python regex syntax}
+   * ). This option is useful when the project has a lot of files so that
+   * it's not desirable to send them all in one chunk along the wire.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<string[]>} A promise that resolves with an array of source files.
    */
-  async sourceFiles () {
-    let { files } = await this.execMI('-file-list-exec-source-files')
-    return files.map((f) => f.fullname)
+  async sourceFiles (pattern) {
+    if (pattern) {
+      let files = await this.execCLI('gdbjs-search ' + pattern)
+      return JSON.parse(files)
+    } else {
+      let { files } = await this.execMI('-file-list-exec-source-files')
+      return files.map((f) => f.fullname)
+    }
   }
 
   /**

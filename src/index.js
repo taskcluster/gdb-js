@@ -17,6 +17,8 @@ import concatCommand from './scripts/concat.py'
 import contextCommand from './scripts/context.py'
 // Command that searches source files using regex.
 import searchCommand from './scripts/search.py'
+// Command that returns the current thread group.
+import groupCommand from './scripts/group.py'
 
 // Default prefix for results of CLI commands.
 const TOKEN = 'GDBJS^'
@@ -490,11 +492,33 @@ class GDB extends EventEmitter {
   async threadGroups (all) {
     let options = all ? '--available' : ''
     let { groups } = await this.execMI('-list-thread-groups ' + options)
-    return groups.map((g) => ({
-      id: g.id,
+    return groups.map((g) => new ThreadGroup(toInt(g.id.slice(1)), {
       pid: toInt(g.pid),
       executable: g.executable
     }))
+  }
+
+  /**
+   * Returns the current thread group.
+   *
+   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
+   * @returns {Promise<ThreadGroup>} A promise that resolves with the thread group.
+   */
+  async currentThreadGroup () {
+    let { id, pid } = JSON.parse(await this.execCLI('gdbjs-group'))
+    return new ThreadGroup(id, { pid })
+  }
+
+  /**
+   * Selects the thread group (i.e. target/inferior).
+   *
+   * @param {ThreadGroup} [group] The thread group to select.
+   *
+   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
+   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   */
+  async selectThreadGroup (group) {
+    await this.execCLI('inferior ' + group.id)
   }
 
   /**

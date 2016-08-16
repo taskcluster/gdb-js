@@ -36,6 +36,7 @@ let debugCLIResluts = createDebugger('gdb-js:results:cli')
 let debugMIResluts = createDebugger('gdb-js:results:mi')
 let debugOutput = createDebugger('gdb-js:output')
 let debugInput = createDebugger('gdb-js:input')
+let debugEvents = createDebugger('gdb-js:events')
 
 /**
  * Converts string to integer.

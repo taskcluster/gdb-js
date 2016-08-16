@@ -1,6 +1,24 @@
 {
   function makeResults (arr) {
-    return arr.reduce((prev, r) => (prev[r.variable] = r.value, prev), {})
+    // XXX: sometimes GDB/MI results don't have name (e.g.
+    // `=breakpoint-modified` when `addr` property is `<MULTIPLE>`).
+    // Below code helps to turn such records into the array.
+
+    for (let i = 0; i < arr.length; i++) {
+      if (!arr[i].name) arr[i].name = arr[i - 1].name
+    }
+
+    let res = arr.reduce((acc, r) => {
+      if (!acc[r.name]) acc[r.name] = []
+      acc[r.name].push(r.value)
+      return acc
+    }, {})
+
+    for (let name in res) {
+      if (res[name].length === 1) res[name] = res[name][0]
+    }
+
+    return res
   }
 }
 
@@ -53,10 +71,10 @@ ResultsList
   = ("," result:Result { return result })*
 
 ValuesList
-  = ("," v:Value { return v })*
+  = ("," value:Value { return value })*
 
 Result
-  = variable:String "=" value:Value { return { variable, value } }
+  = name:String ? ("=" / "") value:Value { return { name, value } }
 
 Value
   = Const / Tuple / List

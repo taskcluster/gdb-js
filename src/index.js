@@ -19,9 +19,10 @@ import Variable from './variable.js'
 import { parse as parseMI } from './parsers/gdbmi.pegjs'
 // Base class for custom GDB commands.
 import baseCommand from './scripts/base.py'
-// Command that puts CLI output to a single console record.
-import concatCommand from './scripts/concat.py'
-// Command that lists all variables in the current context.
+// Command that executes CLI commands
+// prints the results to stdout and also returns them as a string.
+import execCommand from './scripts/exec.py'
+// Command that lists all symbols (e.g. locals, globals) in the current context.
 import contextCommand from './scripts/context.py'
 // Command that searches source files using regex.
 import sourcesCommand from './scripts/sources.py'
@@ -102,9 +103,48 @@ class GDB extends EventEmitter {
 
     // Basically, we're just branching our stream to the messages that should
     // be emitted and the results which we then zip with the sent commands.
-    // Results can be either result records or console records with the specified prefix.
+    // Results can be either result records or framed console records.
 
-    // Emitting raw stream records.
+    let results = stream.fork()
+      .filter((msg) => msg.type === 'result')
+      .zip(this._queue)
+      .map((msg) => Object.assign({}, msg[0], msg[1]))
+
+    results.fork()
+      .filter((msg) => msg.state === 'error')
+      .each((msg) => {
+        let { data, cmd, reject } = msg
+        let text = `Error while executing "${cmd}". ${data.msg}`
+        let err = new GDBError(cmd, text, toInt(data.code))
+        reject(err)
+      })
+
+    let success = results.fork()
+      .filter((msg) => msg.state !== 'error')
+
+    success.fork()
+      .filter((msg) => msg.interpreter === 'mi')
+      .tap((msg) => debugMIResluts(msg.data))
+      .each((msg) => { msg.resolve(msg.data) })
+
+    let commands = stream.observe()
+      .filter((msg) => msg.type === 'console')
+      // It's not possible for a command message to be split into multiple
+      // console records, so we can safely just regex every record.
+      .map((msg) => /<gdbjs:cmd:[a-z-]+ (.*?) [a-z-]+:cmd:gdbjs>/.exec(msg.data))
+      .compact()
+      .map((msg) => JSON.parse(msg[1]))
+      .tap(debugCLIResluts)
+
+    // Here, stream should NOT be forked, but observed instead!
+    // It's important, because zipping streams that are forked from
+    // the same source may cause blocking.
+    success.observe()
+      .filter((msg) => msg.interpreter === 'cli')
+      .zip(commands)
+      .each((msg) => { msg[0].resolve(msg[1]) })
+
+    // Emitting raw async records.
 
     /**
      * Raw output of GDB/MI notify records.
@@ -248,45 +288,36 @@ class GDB extends EventEmitter {
         ['thread-created', 'thread-exited'].includes(msg.state))
       .each((msg) => {
         let { state, data } = msg
-        this.emit(state, {
-          id: toInt(data.id),
-          group: {
-            id: data['group-id']
-          }
-        })
+
+        this.emit(state, new Thread(toInt(data.id), {
+          // GDB/MI stores group id as `i<id>` string.
+          group: new ThreadGroup(toInt(data['group-id'].slice(1)))
+        }))
       })
 
-    // Here, the stream should NOT be forked, but observed instead!
-    // It's important, because zipping streams that are forked from
-    // the same source may cause blocking.
-    let cliOutput = stream.observe()
-      // We consider as the result of CLI operation
-      // only those console records that starts with our token.
-      .filter((msg) => msg.type === 'console' && msg.data.startsWith(this._token))
-      .map((msg) => msg.data.slice(this._token.length))
-      .tap(debugCLIResluts)
+    /**
+     * This event is emitted when thread group starts.
+     *
+     * @event GDB#thread-group-started
+     * @type {ThreadGroup}
+     */
 
-    let results = stream.fork()
-      .filter((msg) => msg.type === 'result')
-      .zip(this._queue)
-      .map((msg) => Object.assign({}, msg[0], msg[1]))
-
-    results.fork()
-      .filter((msg) => msg.state === 'error')
+    /**
+     * This event is emitted when thread group exits.
+     *
+     * @event GDB#thread-group-exited
+     * @type {ThreadGroup}
+     */
+    stream.fork()
+      .filter((msg) => msg.type === 'notify' &&
+        ['thread-group-started', 'thread-group-exited'].includes(msg.state))
       .each((msg) => {
-        let { data, cmd, reject } = msg
-        let text = `Error while executing "${cmd}". ${data.msg}`
-        let err = new GDBError(cmd, text, toInt(data.code))
-        reject(err)
+        let { state, data } = msg
+
+        this.emit(state, new ThreadGroup(toInt(data.id.slice(1)), {
+          pid: data.pid ? toInt(data.pid) : null
+        }))
       })
-
-    let success = results.fork()
-      .filter((msg) => msg.state !== 'error')
-
-    success.fork()
-      .filter((msg) => msg.interpreter === 'mi')
-      .tap((msg) => debugMIResluts(msg.data))
-      .each((msg) => { msg.resolve(msg.data) })
 
     /**
      * This event is emitted with the full path to executable

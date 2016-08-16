@@ -17,8 +17,6 @@ import Frame from './frame.js'
 import Variable from './variable.js'
 // Parser for the GDB/MI output syntax.
 import { parse as parseMI } from './parsers/gdbmi.pegjs'
-// Parser for the output of `info` GDB command.
-import { parse as parseInfo } from './parsers/info.pegjs'
 // Base class for custom GDB commands.
 import baseCommand from './scripts/base.py'
 // Command that puts CLI output to a single console record.

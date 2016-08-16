@@ -1,10 +1,8 @@
 import gdb
-import sys
-import json
 
 
 class ContextCommand(BaseCommand):
-    """Lists all variables in the current context and prints JSON."""
+    """Lists all symbols in the current context."""
 
     def __init__(self):
         super(ContextCommand, self).__init__("context")
@@ -12,13 +10,19 @@ class ContextCommand(BaseCommand):
     def action(self, arg, from_tty):
         frame = gdb.selected_frame()
         block = frame.block()
+        names = set()
         variables = []
         while block:
             for symbol in block:
-                if (symbol.is_argument or symbol.is_variable):
+                name = symbol.name
+                if (name not in names) and (symbol.is_argument or
+                   symbol.is_variable or symbol.is_function or
+                   symbol.is_constant):
                     scope = 'global' if block.is_global else \
                             'static' if block.is_static else \
-                            'arg' if symbol.is_argument else 'local'
+                            'argument' if symbol.is_argument else \
+                            'local'
+                    names.add(name)
                     variables.append({
                         'name': symbol.name,
                         'value': str(symbol.value(frame)),
@@ -26,6 +30,6 @@ class ContextCommand(BaseCommand):
                         'scope': scope
                     })
             block = block.superblock
-        sys.stdout.write(json.dumps(variables))
+        return variables
 
 ContextCommand()

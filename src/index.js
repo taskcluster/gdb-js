@@ -27,9 +27,10 @@ import contextCommand from './scripts/context.py'
 import searchCommand from './scripts/search.py'
 // Command that returns the current thread group.
 import groupCommand from './scripts/group.py'
-
-// Default prefix for results of CLI commands.
-const TOKEN = 'GDBJS^'
+// Base handler for custom GDB events.
+import baseEvent from './scripts/event.py'
+// Event that emits when new objfile is added.
+import objfileEvent from './scripts/objfile.py'
 
 let debugCLIResluts = createDebugger('gdb-js:results:cli')
 let debugMIResluts = createDebugger('gdb-js:results:mi')
@@ -287,10 +288,22 @@ class GDB extends EventEmitter {
       .tap((msg) => debugMIResluts(msg.data))
       .each((msg) => { msg.resolve(msg.data) })
 
-    success.fork()
-      .filter((msg) => msg.interpreter === 'cli')
-      .zip(cliOutput)
-      .each((msg) => { msg[0].resolve(msg[1]) })
+    /**
+     * This event is emitted with the full path to executable
+     * when the new objfile is added.
+     *
+     * @event GDB#new-objfile
+     * @type {string}
+     */
+    stream.fork()
+      .filter((msg) => msg.type === 'console')
+      // Custom `exec` command returns raw console output, so it
+      // might contain events inside it. Thus, we need to strip it.
+      .map((msg) => msg.data.replace(/<gdbjs:cmd:.*?:cmd:gdbjs>/g, ''))
+      .flatMap((msg) => msg.match(/<gdbjs:event:.*?:event:gdbjs>/g) || [])
+      .map((msg) => /<gdbjs:event:([a-z-]+) (.*?) [a-z-]+:event:gdbjs>/g.exec(msg))
+      .tap((msg) => debugEvents(msg[1], msg[2]))
+      .each((msg) => { this.emit(msg[1], msg[2]) })
   }
 
   /**
@@ -311,11 +324,14 @@ class GDB extends EventEmitter {
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
    */
-  async init () {
-    let commands = [baseCommand, concatCommand, contextCommand, searchCommand]
-    for (let c of commands) {
-      await this.execMI(`-interpreter-exec console "python\\n${escape(c)}"`)
-    }
+  init () {
+    return this._sync(async () => {
+      let scripts = [baseCommand, baseEvent, execCommand,
+        contextCommand, sourcesCommand, groupCommand, objfileEvent]
+      for (let s of scripts) {
+        await this._execMI(`-interpreter-exec console "python\\n${escape(s)}"`)
+      }
+    })
   }
 
   /**

@@ -17,7 +17,8 @@ let container = docker.getContainer('gdb-js')
  */
 async function createGDB (example) {
   let exec = await container.exec({
-    Cmd: ['gdb', '--interpreter=mi', `./${example}/main`],
+    // Working directory is necessary for multi-process examples!
+    Cmd: ['gdb', '-i=mi', '--cd=/examples/' + example, 'main'],
     AttachStdout: true,
     AttachSterr: true,
     AttachStdin: true,

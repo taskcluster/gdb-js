@@ -476,9 +476,12 @@ class GDB extends EventEmitter {
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<ThreadGroup>} A promise that resolves with the thread group.
    */
-  async currentThreadGroup () {
-    let { id, pid } = JSON.parse(await this.execCLI('gdbjs-group'))
-    return new ThreadGroup(id, { pid })
+  currentThreadGroup () {
+    return this._sync(() => this._currentThreadGroup())
+  }
+
+  selectThreadGroup (group) {
+    return this._sync(() => this._selectThreadGroup(group))
   }
 
   /**
@@ -489,9 +492,6 @@ class GDB extends EventEmitter {
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
    */
-  async selectThreadGroup (group) {
-    await this.execCLI('inferior ' + group.id)
-  }
 
   /**
    * Insert a breakpoint at the specified position.

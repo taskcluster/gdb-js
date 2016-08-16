@@ -24,7 +24,7 @@ import concatCommand from './scripts/concat.py'
 // Command that lists all variables in the current context.
 import contextCommand from './scripts/context.py'
 // Command that searches source files using regex.
-import searchCommand from './scripts/search.py'
+import sourcesCommand from './scripts/sources.py'
 // Command that returns the current thread group.
 import groupCommand from './scripts/group.py'
 // Base handler for custom GDB events.
@@ -629,24 +629,41 @@ class GDB extends EventEmitter {
    * the regular expression. Please, note that it doesn't return sources.
    *
    * @example
-   * let headers = await gdb.sourceFiles('\.h$')
+   * let headers = await gdb.sourceFiles({ pattern: '\.h$' })
    *
-   * @param {string} [pattern] The regular expression (see
-   * {@link https://docs.python.org/2/library/re.html|Python regex syntax}).
-   * This option is useful when the project has a lot of files so that
-   * it's not desirable to send them all in one chunk along the wire.
+   * @param {object} [options] The options object.
+   * @param {ThreadGroup} [options.group] The thread group (i.e. target) for
+   *   which source files are needed. If this parameter is absent, then
+   *   source files are returned for all targets.
+   * @param {string} [options.pattern] The regular expression (see
+   *   {@link https://docs.python.org/2/library/re.html|Python regex syntax}).
+   *   This option is useful when the project has a lot of files so that
+   *   it's not desirable to send them all in one chunk along the wire.
    *
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<string[]>} A promise that resolves with an array of source files.
    */
-  async sourceFiles (pattern) {
-    if (pattern) {
-      let files = await this.execCLI('gdbjs-search ' + pattern)
-      return JSON.parse(files)
-    } else {
-      let { files } = await this.execMI('-file-list-exec-source-files')
-      return files.map((f) => f.fullname)
+  sourceFiles (options = {}) {
+    let task = async () => {
+      let files = []
+      let group = options.group
+      let pattern = options.pattern || ''
+      let cmd = 'sources ' + pattern
+
+      if (group) {
+        files = await this._execCMD(cmd, group)
+      } else {
+        let groups = await this._threadGroups()
+        for (let g of groups) {
+          files = files.concat(await this._execCMD(cmd, g))
+        }
+        files = files.filter((f, index) => files.indexOf(f) === index)
+      }
+
+      return files
     }
+
+    return this._sync(() => this._preserveState(task))
   }
 
   /**

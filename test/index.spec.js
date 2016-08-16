@@ -3,9 +3,10 @@
 import { expect } from 'chai'
 import { PassThrough } from 'stream'
 import Docker from 'dockerode-promise'
-import GDB from '../lib'
+import { GDB, Thread, ThreadGroup, Breakpoint, Frame } from '../lib'
 
-let container
+let docker = new Docker({ socketPath: '/var/run/docker.sock' })
+let container = docker.getContainer('gdb-js')
 
 /**
  * Create a GDB wrapper instance for the specified example.

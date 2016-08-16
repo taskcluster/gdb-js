@@ -5,6 +5,16 @@ import _ from 'highland'
 
 // Custom error class.
 import GDBError from './error.js'
+// Thread object class.
+import Thread from './thread.js'
+// Thread group object class.
+import ThreadGroup from './group.js'
+// Breakpoint object class.
+import Breakpoint from './breakpoint.js'
+// Frame object class.
+import Frame from './frame.js'
+// Variable object class.
+import Variable from './variable.js'
 // Parser for the GDB/MI output syntax.
 import { parse as parseMI } from './parsers/gdbmi.pegjs'
 // Parser for the output of `info` GDB command.
@@ -52,56 +62,6 @@ function escape (script) {
   return script.replace(/\\/g, '\\\\').replace(/\n/g, '\\n')
     .replace(/\r/g, '\\r').replace(/\t/g, '\\t').replace(/"/g, '\\"')
 }
-
-/**
- * A variable representation.
- *
- * @typedef {object} Variable
- * @property {string} name The name of the variable.
- * @property {string} type The type of the variable.
- * @property {string} scope The scope of the variable.
- * @property {string} value The value of the variable.
- */
-
-/**
- * A thread representation.
- *
- * @typedef {object} Thread
- * @property {number} id The thread ID.
- * @property {ThreadGroup} [group] The thread group.
- * @property {string} [stopped] The thread status (e.g. `stopped`).
- * @property {Frame} [frame] The frame where thread is currently on.
- */
-
-/**
- * A thread-group representation.
- *
- * @typedef {object} ThreadGroup
- * @property {string} id The thread-group ID.
- * @property {string} [executable] The executable of target.
- * @property {number} [pid] The PID of the thread-group.
- */
-
-/**
- * A frame representation.
- *
- * @typedef {object} Frame
- * @property {string} file The full path to a file.
- * @property {number} line The line number.
- * @property {number} [level] The level of stack frame.
- */
-
-/**
- * A breakpoint representation.
- *
- * @typedef {object} Breakpoint
- * @property {number} id Breakpoint ID.
- * @property {string} [file] The full path to a file in which breakpoint appears.
- * @property {number} [line] The line number at which the breakpoint appears.
- * @property {string} [func] The function in which the breakpoint appears.
- * @property {number} [times] The number of times the breakpoint has been hit.
- * @property {Thread} [thread] The thread for thread-specific breakpoints.
- */
 
 /**
  * Class representing a GDB abstraction.
@@ -236,19 +196,17 @@ class GDB extends EventEmitter {
         let thread = data['thread-id']
         let event = { reason: data.reason }
         if (thread) {
-          event.thread = {
-            id: toInt(thread),
-            frame: {
+          event.thread = new Thread(toInt(thread), {
+            frame: new Frame({
               file: data.frame.fullname,
               line: toInt(data.frame.line)
-            }
-          }
+            })
+          })
         }
         if (data.reason === 'breakpoint-hit') {
-          event.breakpoint = {
-            id: toInt(data.bkptno)
-          }
+          event.breakpoint = new Breakpoint(toInt(data.bkptno))
         }
+
         this.emit('stopped', event)
       })
 
@@ -264,12 +222,12 @@ class GDB extends EventEmitter {
       .filter((msg) => msg.type === 'exec' && msg.state === 'running')
       .each((msg) => {
         let { data } = msg
+        let thread = data['thread-id']
         let event = {}
-        if (data['thread-id'] !== 'all') {
-          event.thread = {
-            id: toInt(data['thread-id'])
-          }
+        if (thread !== 'all') {
+          event.thread = new Thread(toInt(thread))
         }
+
         this.emit('running', event)
       })
 
@@ -532,16 +490,17 @@ class GDB extends EventEmitter {
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<Breakpoint>} A promise that resolves with a breakpoint.
    */
-  async addBreak (file, pos, thread) {
-    let opt = thread ? '-p ' + thread : ''
-    let { bkpt } = await this.execMI(`-break-insert ${opt} ${file}:${pos}`)
-    return {
-      id: toInt(bkpt.number),
-      file: bkpt.fullname,
-      line: toInt(bkpt.line),
-      func: bkpt.func,
-      thread
-    }
+  addBreak (file, pos, thread) {
+    return this._sync(async () => {
+      let opt = thread ? '-p ' + thread.id : ''
+      let { bkpt } = await this._execMI(`-break-insert ${opt} ${file}:${pos}`)
+      return new Breakpoint(toInt(bkpt.number), {
+        file: bkpt.fullname,
+        line: toInt(bkpt.line),
+        func: bkpt.func,
+        thread
+      })
+    })
   }
 
   /**
@@ -625,37 +584,11 @@ class GDB extends EventEmitter {
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<Variable[]>} A promise that resolves with an array of variables.
    */
-  async context (thread) {
-    let res = await this.execCLI('gdbjs-context', thread)
-    return JSON.parse(res)
-  }
-
-  /**
-   * List all global variables. It uses the symbol table to achieve this.
-   *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<Variable[]>} A promise that resolves with an array of variables.
-   */
-  async globals () {
-    if (!this._globals) {
-      // Getting all globals is currently only possible
-      // through parsing the symbol table. Symbol table is
-      // exported to Python only partially, thus we need
-      // to parse it manually.
-      let res = await this.execCLI('info variables')
-      this._globals = parseInfo(res)
-    }
-
-    let res = []
-
-    for (let v of this._globals) {
-      // TODO: instead of making multiple requests
-      // it's better to do it with a single python function
-      let value = await this.evaluate(v.name)
-      res.push(Object.assign({}, v, { value }))
-    }
-
-    return res
+  context (thread) {
+    return this._sync(async () => {
+      let res = await this._execCMD('context', thread)
+      return res.map((v) => new Variable(v))
+    })
   }
 
   /**
@@ -666,13 +599,15 @@ class GDB extends EventEmitter {
    * @throws {GDBError} Internal GDB errors that arise in the MI interface.
    * @returns {Promise<Frame[]>} A promise that resolves with an array of frames.
    */
-  async callstack (thread) {
-    let { stack } = await this.execMI('-stack-list-frames', thread)
-    return stack.map((f) => ({
-      file: f.value.fullname,
-      line: toInt(f.value.line),
-      level: toInt(f.value.level)
-    }))
+  callstack (thread) {
+    return this._sync(async () => {
+      let { stack } = await this._execMI('-stack-list-frames', thread)
+      return stack.map((f) => new Frame({
+        file: f.value.fullname,
+        line: toInt(f.value.line),
+        level: toInt(f.value.level)
+      }))
+    })
   }
 
   /**
@@ -820,22 +755,20 @@ class GDB extends EventEmitter {
    *
    * @ignore
    */
-  async _exec (cmd, interpreter) {
+  _exec (cmd, interpreter) {
     debugInput(cmd)
-    // All CLI commands are actually executed within MI interface.
-    // And all of them are executed with the support of `gdbjs-concat` command that is defined
-    // in the `init` method. `gdbjs-concat` makes it possible to view whole output
-    // of a CLI command in the single console record.
     cmd = interpreter === 'cli'
-      ? `-interpreter-exec console "gdbjs-concat ${this._token} ${cmd}"` : cmd
+      ? `-interpreter-exec console "${cmd}"` : cmd
     this._process.stdin.write(cmd + '\n', { binary: true })
-    return await new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       this._queue.write({ cmd, interpreter, resolve, reject })
     })
   }
+
+  _sync (task) {
+    this._lock = this._lock.then(() => task())
+    return this._lock
+  }
 }
 
-// XXX: `export default` won't work here
-// the same way due to messed up semantics.
-// It'll export `{ default: ... }` object.
-module.exports = GDB
+export { GDB, Thread, ThreadGroup, Breakpoint, Frame, Variable }

@@ -10,6 +10,8 @@
     "prepublish": "npm run release && npm run test && npm run lint",
     "postpublish": "npm run clean",
     "postinstall": "npm run build",
+    "docker-run": "docker run -i -d --cap-add sys_ptrace --name gdb-js baygeldin/gdb-examples",
+    "docker-rm": "docker rm -f gdb-js",
     "docker-pull": "docker pull baygeldin/gdb-examples",
     "docs": "jsdoc -c jsdoc.json",
     "build": "webpack",

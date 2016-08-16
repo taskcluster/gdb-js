@@ -1,4 +1,3 @@
-import assert from 'assert'
 import createDebugger from 'debug'
 import { EventEmitter } from 'events'
 import _ from 'highland'

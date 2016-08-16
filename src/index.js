@@ -173,26 +173,33 @@ class GDB extends EventEmitter {
      * @property {object} data JSON representation of GDB/MI message.
      */
     stream.fork()
-      .filter((msg) => ['console', 'target', 'log'].includes(msg.type))
-      .each((msg) => { this.emit(msg.type, msg.data) })
+      .filter((msg) => ['exec', 'notify', 'status'].includes(msg.type))
+      .each((msg) => { this.emit(msg.type, { state: msg.state, data: msg.data }) })
 
-    // Emitting raw async records.
+    // Exposing streams of raw stream records.
 
     /**
      * Raw output of GDB/MI console records.
-     * The console output stream contains text that should be displayed in the CLI console window.
      *
-     * @event GDB#console
-     * @type {string}
+     * @type {Readable<string>}
      */
+    this.consoleStream = stream.observe()
+      .filter((msg) => msg.type === 'console')
+      // `exec` command output might contain events in its contents,
+      // so we need to strip it first.
+      .map((msg) => msg.data
+        .replace(/<gdbjs:cmd:.*?:cmd:gdbjs>/g, '')
+        .replace(/<gdbjs:.*?:gdbjs>/g, ''))
 
     /**
      * Raw output of GDB/MI log records.
      * The log stream contains debugging messages being produced by gdb's internals.
      *
-     * @event GDB#log
-     * @type {string}
+     * @type {Readable<string>}
      */
+    this.logStream = stream.observe()
+      .filter((msg) => msg.type === 'log')
+      .map((msg) => msg.data)
 
     /**
      * Raw output of GDB/MI target records.
@@ -201,12 +208,11 @@ class GDB extends EventEmitter {
      * to distinguish the target and the MI output correctly due to a bug in GDB/MI. Thus,
      * it's recommended to use `--tty` option with your GDB process.
      *
-     * @event GDB#target
-     * @type {string}
+     * @type {Readable<string>}
      */
-    stream.fork()
-      .filter((msg) => ['exec', 'notify', 'status'].includes(msg.type))
-      .each((msg) => { this.emit(msg.type, { state: msg.state, data: msg.data }) })
+    this.targetStream = stream.observe()
+      .filter((msg) => msg.type === 'target')
+      .map((msg) => msg.data)
 
     // Emitting defined events.
 

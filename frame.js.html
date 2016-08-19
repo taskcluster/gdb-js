@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>error.js - Documentation</title>
+    <title>frame.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">error.js</h1>
+    <h1 class="page-title">frame.js</h1>
     
 
     
@@ -38,46 +38,43 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Class representing an internal GDB error.
- *
- * @extends Error
+ * Class representing a frame.
  */
-class GDBError extends Error {
+class Frame {
   /**
-   * Create a GDBError.
+   * Create a frame object.
    *
-   * @param {string} cmd Command that led to this error.
-   * @param {string} msg Error message.
-   * @param {number} [code] Error code.
-   *
-   * @private
+   * @param {object} options The options object.
+   * @param {string} options.file The full path to a file.
+   * @param {number} options.line The line number.
+   * @param {number} [options.level] The level of stack frame.
    */
-  constructor (cmd, msg, code) {
-    super(msg)
+  constructor (options = {}) {
+    /**
+     * The full path to a file.
+     *
+     * @type {string}
+     */
+    this.file = options.file
 
-    this.name = 'GDBError'
     /**
-     * Command that led to this error.
+     * The line number.
      *
-     * @type {string}
-     **/
-    this.command = cmd
+     * @type {number}
+     */
+    this.line = options.line
+
     /**
-     * Error message.
-     *
-     * @type {string}
-     **/
-    this.message = msg
-    /**
-     * Error code.
+     * The level of stack frame.
      *
      * @type {?number}
-     **/
-    this.code = code
+     */
+    this.level = Number.isInteger(options.level)
+      ? options.level : null
   }
 }
 
-export default GDBError
+export default Frame
 </code></pre>
         </article>
     </section>

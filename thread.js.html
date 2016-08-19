@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>error.js - Documentation</title>
+    <title>thread.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">error.js</h1>
+    <h1 class="page-title">thread.js</h1>
     
 
     
@@ -38,46 +38,52 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Class representing an internal GDB error.
- *
- * @extends Error
+ * Class representing a thread.
  */
-class GDBError extends Error {
+class Thread {
   /**
-   * Create a GDBError.
+   * Create a thread object.
+   * Usually you don't need to create it yourself unless
+   * you're doing some low-level stuff.
    *
-   * @param {string} cmd Command that led to this error.
-   * @param {string} msg Error message.
-   * @param {number} [code] Error code.
-   *
-   * @private
+   * @param {number} id The internal GDB ID of a thread.
+   * @param {object} [options] The options object.
+   * @param {string} [options.stopped] The thread status (e.g. `stopped`).
+   * @param {ThreadGroup} [options.group] The thread group.
+   * @param {Frame} [options.frame] The frame where thread is currently on.
    */
-  constructor (cmd, msg, code) {
-    super(msg)
+  constructor (id, options = {}) {
+    /**
+     * The internal GDB ID of a thread.
+     *
+     * @type {number}
+     */
+    this.id = id
 
-    this.name = 'GDBError'
     /**
-     * Command that led to this error.
+     * The thread status (e.g. `stopped`).
      *
-     * @type {string}
-     **/
-    this.command = cmd
+     * @type {?string}
+     */
+    this.status = options.status || null
+
     /**
-     * Error message.
+     * The thread group.
      *
-     * @type {string}
-     **/
-    this.message = msg
+     * @type {?ThreadGroup}
+     */
+    this.group = options.group || null
+
     /**
-     * Error code.
+     * The frame where thread is currently on.
      *
-     * @type {?number}
-     **/
-    this.code = code
+     * @type {?Frame}
+     */
+    this.frame = options.frame || null
   }
 }
 
-export default GDBError
+export default Thread
 </code></pre>
         </article>
     </section>

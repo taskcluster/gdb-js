@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>GDBError - Documentation</title>
+    <title>Breakpoint - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">GDBError</h1>
+    <h1 class="page-title">Breakpoint</h1>
     
 
     
@@ -40,10 +40,10 @@
 <header>
     
         <h2>
-        GDBError
+        Breakpoint
         </h2>
         
-            <div class="class-description"><p>Class representing an internal GDB error.</p></div>
+            <div class="class-description"><p>Class representing a breakpoint.</p></div>
         
     
 </header>
@@ -57,7 +57,7 @@
     <h2>Constructor</h2>
     
 
-    <h4 class="name" id="GDBError"><span class="type-signature"></span>new GDBError<span class="signature">(cmd, msg, code<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
+    <h4 class="name" id="Breakpoint"><span class="type-signature"></span>new Breakpoint<span class="signature">(id, options<span class="signature-attributes">opt</span>)</span><span class="type-signature"></span></h4>
 
     
 
@@ -69,7 +69,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="error.js.html">error.js</a>, <a href="error.js.html#line6">line 6</a>
+        <a href="breakpoint.js.html">breakpoint.js</a>, <a href="breakpoint.js.html#line4">line 4</a>
     </li></ul></dd>
     
 
@@ -109,7 +109,9 @@
 
 
 <div class="description">
-    <p>Create a GDBError.</p>
+    <p>Create a breakpoint object.
+Usually you don't need to create it yourself unless
+you're doing some low-level stuff.</p>
 </div>
 
 
@@ -149,13 +151,13 @@
 
         <tr>
             
-                <td class="name"><code>cmd</code></td>
+                <td class="name"><code>id</code></td>
             
 
             <td class="type">
             
                 
-<span class="param-type">string</span>
+<span class="param-type">number</span>
 
 
             
@@ -173,14 +175,68 @@
 
             
 
-            <td class="description last"><p>Command that led to this error.</p></td>
+            <td class="description last"><p>The internal GDB ID of a breakpoint.</p></td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>msg</code></td>
+                <td class="name"><code>options</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">object</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>The options object.</p>
+                <h6>Properties</h6>
+                
+
+<table class="params">
+    <thead>
+    <tr>
+        
+        <th>Name</th>
+        
+
+        <th>Type</th>
+
+        
+        <th>Attributes</th>
+        
+
+        
+
+        <th class="last">Description</th>
+    </tr>
+    </thead>
+
+    <tbody>
+    
+
+        <tr>
+            
+                <td class="name"><code>file</code></td>
             
 
             <td class="type">
@@ -195,6 +251,8 @@
             
                 <td class="attributes">
                 
+                    &lt;optional><br>
+                
 
                 
 
@@ -204,14 +262,14 @@
 
             
 
-            <td class="description last"><p>Error message.</p></td>
+            <td class="description last"><p>The full path to a file in which breakpoint appears.</p></td>
         </tr>
 
     
 
         <tr>
             
-                <td class="name"><code>code</code></td>
+                <td class="name"><code>line</code></td>
             
 
             <td class="type">
@@ -237,7 +295,80 @@
 
             
 
-            <td class="description last"><p>Error code.</p></td>
+            <td class="description last"><p>The line number at which the breakpoint appears.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>func</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>The function in which the breakpoint appears.</p></td>
+        </tr>
+
+    
+
+        <tr>
+            
+                <td class="name"><code>thread</code></td>
+            
+
+            <td class="type">
+            
+                
+<span class="param-type"><a href="Thread.html">Thread</a></span>
+
+
+            
+            </td>
+
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+
+                
+
+                
+                </td>
+            
+
+            
+
+            <td class="description last"><p>The thread for thread-specific breakpoints.</p></td>
+        </tr>
+
+    
+    </tbody>
+</table>
+
+            </td>
         </tr>
 
     
@@ -263,17 +394,6 @@
     </div>
 
     
-        <h3 class="subsection-title">Extends</h3>
-
-        
-
-
-    <ul>
-        <li>Error</li>
-    </ul>
-
-
-    
 
     
 
@@ -288,7 +408,7 @@
 
         
             
-<h4 class="name" id="command"><span class="type-signature"></span>command<span class="type-signature"> :string</span></h4>
+<h4 class="name" id="id"><span class="type-signature"></span>id<span class="type-signature"> :number</span></h4>
 
 
 
@@ -299,7 +419,7 @@
     
     <dt class="tag-source">Source:</dt>
     <dd class="tag-source"><ul class="dummy"><li>
-        <a href="error.js.html">error.js</a>, <a href="error.js.html#line25">line 25</a>
+        <a href="breakpoint.js.html">breakpoint.js</a>, <a href="breakpoint.js.html#line23">line 23</a>
     </li></ul></dd>
     
 
@@ -339,153 +459,7 @@
 
 
 <div class="description">
-    <p>Command that led to this error.</p>
-</div>
-
-
-
-    <h5>Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">string</span>
-
-
-        </li>
-    </ul>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id="message"><span class="type-signature"></span>message<span class="type-signature"> :string</span></h4>
-
-
-
-
-
-<dl class="details">
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="error.js.html">error.js</a>, <a href="error.js.html#line31">line 31</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-<div class="description">
-    <p>Error message.</p>
-</div>
-
-
-
-    <h5>Type:</h5>
-    <ul>
-        <li>
-            
-<span class="param-type">string</span>
-
-
-        </li>
-    </ul>
-
-
-
-
-
-
-        
-            
-<h4 class="name" id="code"><span class="type-signature">(nullable) </span>code<span class="type-signature"> :number</span></h4>
-
-
-
-
-
-<dl class="details">
-
-    
-    <dt class="tag-source">Source:</dt>
-    <dd class="tag-source"><ul class="dummy"><li>
-        <a href="error.js.html">error.js</a>, <a href="error.js.html#line37">line 37</a>
-    </li></ul></dd>
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-
-    
-</dl>
-
-
-
-
-
-<div class="description">
-    <p>Error code.</p>
+    <p>The internal GDB ID of a breakpoint.</p>
 </div>
 
 
@@ -495,6 +469,298 @@
         <li>
             
 <span class="param-type">number</span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="file"><span class="type-signature">(nullable) </span>file<span class="type-signature"> :string</span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="breakpoint.js.html">breakpoint.js</a>, <a href="breakpoint.js.html#line30">line 30</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>The full path to a file in which breakpoint appears.</p>
+</div>
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">string</span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="line"><span class="type-signature">(nullable) </span>line<span class="type-signature"> :number</span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="breakpoint.js.html">breakpoint.js</a>, <a href="breakpoint.js.html#line37">line 37</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>The line number at which the breakpoint appears.</p>
+</div>
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">number</span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="func"><span class="type-signature">(nullable) </span>func<span class="type-signature"> :string</span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="breakpoint.js.html">breakpoint.js</a>, <a href="breakpoint.js.html#line44">line 44</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>The function in which the breakpoint appears.</p>
+</div>
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type">string</span>
+
+
+        </li>
+    </ul>
+
+
+
+
+
+
+        
+            
+<h4 class="name" id="thread"><span class="type-signature">(nullable) </span>thread<span class="type-signature"> :<a href="Thread.html">Thread</a></span></h4>
+
+
+
+
+
+<dl class="details">
+
+    
+    <dt class="tag-source">Source:</dt>
+    <dd class="tag-source"><ul class="dummy"><li>
+        <a href="breakpoint.js.html">breakpoint.js</a>, <a href="breakpoint.js.html#line51">line 51</a>
+    </li></ul></dd>
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+</dl>
+
+
+
+
+
+<div class="description">
+    <p>The thread for thread-specific breakpoints.</p>
+</div>
+
+
+
+    <h5>Type:</h5>
+    <ul>
+        <li>
+            
+<span class="param-type"><a href="Thread.html">Thread</a></span>
 
 
         </li>

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>error.js - Documentation</title>
+    <title>breakpoint.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">error.js</h1>
+    <h1 class="page-title">breakpoint.js</h1>
     
 
     
@@ -38,46 +38,60 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Class representing an internal GDB error.
- *
- * @extends Error
+ * Class representing a breakpoint.
  */
-class GDBError extends Error {
+class Breakpoint {
   /**
-   * Create a GDBError.
+   * Create a breakpoint object.
+   * Usually you don't need to create it yourself unless
+   * you're doing some low-level stuff.
    *
-   * @param {string} cmd Command that led to this error.
-   * @param {string} msg Error message.
-   * @param {number} [code] Error code.
-   *
-   * @private
+   * @param {number} id The internal GDB ID of a breakpoint.
+   * @param {object} [options] The options object.
+   * @param {string} [options.file] The full path to a file in which breakpoint appears.
+   * @param {number} [options.line] The line number at which the breakpoint appears.
+   * @param {string} [options.func] The function in which the breakpoint appears.
+   * @param {Thread} [options.thread] The thread for thread-specific breakpoints.
    */
-  constructor (cmd, msg, code) {
-    super(msg)
+  constructor (id, options = {}) {
+    /**
+     * The internal GDB ID of a breakpoint.
+     *
+     * @type {number}
+     */
+    this.id = id
 
-    this.name = 'GDBError'
     /**
-     * Command that led to this error.
+     * The full path to a file in which breakpoint appears.
      *
-     * @type {string}
-     **/
-    this.command = cmd
+     * @type {?string}
+     */
+    this.file = options.file || null
+
     /**
-     * Error message.
-     *
-     * @type {string}
-     **/
-    this.message = msg
-    /**
-     * Error code.
+     * The line number at which the breakpoint appears.
      *
      * @type {?number}
-     **/
-    this.code = code
+     */
+    this.line = options.line || null
+
+    /**
+     * The function in which the breakpoint appears.
+     *
+     * @type {?string}
+     */
+    this.func = options.func || null
+
+    /**
+     * The thread for thread-specific breakpoints.
+     *
+     * @type {?Thread}
+     */
+    this.thread = options.thread || null
   }
 }
 
-export default GDBError
+export default Breakpoint
 </code></pre>
         </article>
     </section>

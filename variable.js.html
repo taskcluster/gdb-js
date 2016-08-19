@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>error.js - Documentation</title>
+    <title>variable.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">error.js</h1>
+    <h1 class="page-title">variable.js</h1>
     
 
     
@@ -38,46 +38,51 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Class representing an internal GDB error.
- *
- * @extends Error
+ * Class representing a variable.
  */
-class GDBError extends Error {
+class Variable {
   /**
-   * Create a GDBError.
+   * Create a variable object.
+   * Usually you don't need to create it yourself.
    *
-   * @param {string} cmd Command that led to this error.
-   * @param {string} msg Error message.
-   * @param {number} [code] Error code.
-   *
-   * @private
+   * @param {object} options The options object.
+   * @param {string} options.name The name of the variable.
+   * @param {string} options.type The type of the variable.
+   * @param {string} options.scope The scope of the variable.
+   * @param {string} options.value The value of the variable.
    */
-  constructor (cmd, msg, code) {
-    super(msg)
+  constructor (options = {}) {
+    /**
+     * The name of the variable.
+     *
+     * @type {string}
+     */
+    this.name = options.name
 
-    this.name = 'GDBError'
     /**
-     * Command that led to this error.
+     * The type of the variable.
      *
      * @type {string}
-     **/
-    this.command = cmd
+     */
+    this.type = options.type
+
     /**
-     * Error message.
+     * The scope of the variable.
      *
      * @type {string}
-     **/
-    this.message = msg
+     */
+    this.scope = options.scope
+
     /**
-     * Error code.
+     * The value of the variable.
      *
-     * @type {?number}
-     **/
-    this.code = code
+     * @type {string}
+     */
+    this.value = options.value
   }
 }
 
-export default GDBError
+export default Variable
 </code></pre>
         </article>
     </section>

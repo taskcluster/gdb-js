@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>error.js - Documentation</title>
+    <title>group.js - Documentation</title>
 
     <script src="scripts/prettify/prettify.js"></script>
     <script src="scripts/prettify/lang-css.js"></script>
@@ -27,7 +27,7 @@
 
 <div id="main">
     
-    <h1 class="page-title">error.js</h1>
+    <h1 class="page-title">group.js</h1>
     
 
     
@@ -38,46 +38,45 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * Class representing an internal GDB error.
- *
- * @extends Error
+ * Class representing a thread group (aka target, aka inferior).
  */
-class GDBError extends Error {
+class ThreadGroup {
   /**
-   * Create a GDBError.
+   * Create a thread group object.
+   * Usually you don't need to create it yourself unless
+   * you're doing some low-level stuff.
    *
-   * @param {string} cmd Command that led to this error.
-   * @param {string} msg Error message.
-   * @param {number} [code] Error code.
-   *
-   * @private
+   * @param {number} id The internal GDB ID of a thread group.
+   * @param {object} [options] The options object.
+   * @param {string} [options.executable] The executable of target.
+   * @param {number} [options.pid] The PID of the thread-group.
    */
-  constructor (cmd, msg, code) {
-    super(msg)
+  constructor (id, options = {}) {
+    /**
+     * The internal GDB ID of a thread group.
+     *
+     * @type {number}
+     */
+    this.id = id
 
-    this.name = 'GDBError'
     /**
-     * Command that led to this error.
+     * The executable of target.
      *
-     * @type {string}
-     **/
-    this.command = cmd
+     * @type {?string}
+     */
+    this.executable = options.executable || null
+
     /**
-     * Error message.
-     *
-     * @type {string}
-     **/
-    this.message = msg
-    /**
-     * Error code.
+     * The PID of the thread-group.
      *
      * @type {?number}
-     **/
-    this.code = code
+     */
+    this.pid = Number.isInteger(options.pid)
+      ? options.pid : null
   }
 }
 
-export default GDBError
+export default ThreadGroup
 </code></pre>
         </article>
     </section>

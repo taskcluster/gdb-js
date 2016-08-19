@@ -358,8 +358,9 @@ class GDB extends EventEmitter {
    */
   init () {
     return this._sync(async () => {
-      let scripts = [baseCommand, baseEvent, execCommand,
-        contextCommand, sourcesCommand, groupCommand, objfileEvent]
+      let scripts = [baseCommand, baseEvent, execCommand, contextCommand,
+        sourcesCommand, groupCommand, threadCommand, objfileEvent]
+
       for (let s of scripts) {
         await this._execMI(`-interpreter-exec console "python\\n${escape(s)}"`)
       }
@@ -809,9 +810,8 @@ class GDB extends EventEmitter {
   }
 
   async _currentThread () {
-    let res = await this._execMI('-thread-list-ids')
-    let id = res['current-thread-id']
-    return id ? new Thread(toInt(id)) : null
+    let { id, group} = await this._execCMD('thread')
+    return id ? new Thread(id, { group }) : null
   }
 
   async _currentThreadGroup () {

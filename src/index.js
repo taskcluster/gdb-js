@@ -879,7 +879,7 @@ class GDB extends EventEmitter {
    * @ignore
    */
   async _currentThread () {
-    let { id, group} = await this._execCMD('thread')
+    let { id, group } = await this._execCMD('thread')
     return id ? new Thread(id, { group }) : null
   }
 

@@ -27,15 +27,19 @@ import contextCommand from './scripts/context.py'
 import sourcesCommand from './scripts/sources.py'
 // Command that returns the current thread group.
 import groupCommand from './scripts/group.py'
+// Command that returns the current thread.
+import threadCommand from './scripts/thread.py'
 // Base handler for custom GDB events.
 import baseEvent from './scripts/event.py'
 // Event that emits when new objfile is added.
 import objfileEvent from './scripts/objfile.py'
 
+// Debug logging.
+let debugOutput = createDebugger('gdb-js:output')
+let debugCLIInput = createDebugger('gdb-js:input:cli')
+let debugMIInput = createDebugger('gdb-js:input:mi')
 let debugCLIResluts = createDebugger('gdb-js:results:cli')
 let debugMIResluts = createDebugger('gdb-js:results:mi')
-let debugOutput = createDebugger('gdb-js:output')
-let debugInput = createDebugger('gdb-js:input')
 let debugEvents = createDebugger('gdb-js:events')
 
 /**
@@ -905,10 +909,15 @@ class GDB extends EventEmitter {
    * @ignore
    */
   _exec (cmd, interpreter) {
-    debugInput(cmd)
-    cmd = interpreter === 'cli'
-      ? `-interpreter-exec console "${cmd}"` : cmd
+    if (interpreter === 'mi') {
+      debugMIInput(cmd)
+    } else {
+      debugCLIInput(`gdbjs-${cmd}`)
+      cmd = `-interpreter-exec console "gdbjs-${cmd}"`
+    }
+
     this._process.stdin.write(cmd + '\n', { binary: true })
+
     return new Promise((resolve, reject) => {
       this._queue.write({ cmd, interpreter, resolve, reject })
     })

@@ -104,7 +104,7 @@ class GDB extends EventEmitter {
     // be emitted and the results which we then zip with the sent commands.
     // Results can be either result records or framed console records.
 
-    let results = stream.fork()
+    let results = stream.observe()
       .filter((msg) => msg.type === 'result')
       .zip(this._queue)
       .map((msg) => Object.assign({}, msg[0], msg[1]))

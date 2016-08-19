@@ -189,11 +189,7 @@ class GDB extends EventEmitter {
      */
     this.consoleStream = stream.observe()
       .filter((msg) => msg.type === 'console')
-      // `exec` command output might contain events in its contents,
-      // so we need to strip it first.
-      .map((msg) => msg.data
-        .replace(/<gdbjs:cmd:.*?:cmd:gdbjs>/g, '')
-        .replace(/<gdbjs:.*?:gdbjs>/g, ''))
+      .map((msg) => msg.data.replace(/<gdbjs:.*?:gdbjs>/g, ''))
 
     /**
      * Raw output of GDB/MI log records.

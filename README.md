@@ -32,12 +32,11 @@ Reading the sources of tests is also useful.
 ```
 $ npm install gdb-js
 ```
-:warning: Note, that **gdb-js** is still under development. Use to your own risk.
 
 ## Usage
 ```javascript
 import { spawn } from 'child-process'
-import GDB from 'gdb-js'
+import { GDB } from 'gdb-js'
 
 let child = spawn('gdb', ['-i=mi', 'main'])
 let gdb = new GDB(child)
@@ -72,10 +71,109 @@ await gdb.continue(threads[1])
 Multiple targets:
 ```javascript
 // Get all available thread groups (i.e. processes)
-let processes = await gdb.threadGroups(true)
-let bash = processes.find((p) => p.description === 'bash')
+let { groups } = await gdb.execMI('-list-thread-groups --available')
+let bash = groups.find((p) => p.description === 'bash')
 // bash.id is just a pid, it can be any other pid
 await gdb.attach(bash.id)
+```
+
+## Extending
+Although **gdb-js** supports all CLI and MI commands, you may be interested in extending its functionality usging GDB's [Python API](https://sourceware.org/gdb/current/onlinedocs/gdb/Python-API.html). It's possible to add new functionality even without forking **gdb-js**. 
+
+### Implementation details
+In order to understand how to extend the functionality, it may be useful to know a little about internals of **gdb-js**. It distinguishes MI and CLI commands. For MI commands the logic is pretty straightforward: every result record of GDB/MI [output syntax](https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI-Output-Syntax.html) is parsed, turned to JSON and returned as a result of `execMI` method. However, it's not possible to do the same for CLI commands since their output is exposed to console stream. What **gdb-js** does is defining custom CLI commands with Python API that are framed into `<gdbjs:cmd:[command_name] [JSON] [command_name]:cmd:gdbjs>` where `[command_name]` is the command name obviously and `[JSON]` is the valid JSON string. This way we can extract results of such commands and return them as a result of `execCMD` method. One of such commands that **gdb-js** defines is `gdbjs-exec` CLI command that executes whatever you pass to it and prints `<gdbjs:cmd:exec [results] exec:cmd:gdbjs>` where `[results]` is everything that was written to console during the execution of your command (remember that string is a valid JSON). That's how it's possible to get the results of CLI commands with `execCLI` method. `execCLI(cmd)` is essentially `execCMD('exec ' + cmd)`. And `execPy(script)` is just `execCMD('exec python\\n' + escape(script))` (we need to escape quotes and other stuff). Also **gdb-js** uses events from Python API and it writes them to console stream as `<gdbjs:event:[event_name] [JSON] [event_name]:event:gdbjs>` where `[event_name]` is the name of the event and `[JSON]` is the contents of the event. All of these internal **gdb-js** messages are stripped from the `consoleStream` property of this wrapper. It's possible to define your own events and commands and here's how.
+
+### Defining a new command
+```python
+import gdb
+
+
+class ThreadIDCommand(BaseCommand):
+    """Returns the ID of the thread as assigned by OS."""
+
+    def __init__(self):
+        super(ThreadIDCommand, self).__init__("thread-id")
+
+    def action(self, arg, from_tty):
+        thread = gdb.selected_thread()
+        (pid, lwpid, tid) = thread.ptid
+        return { "pid": pid, "lwpid": lwpid, "tid": tid }
+
+threadIDCommand = ThreadIDCommand()
+```
+
+```javascript
+let script = fs.readFileSync('thread-id.py', { encoding: 'utf8' })
+
+await gdb.execPy(script)
+
+let { pid, lwpid, tid } = await gdb.execCMD('thread-id')
+```
+
+It's even possible to use defined commands in other defined commands.
+
+```python
+class JustPIDCommand(BaseCommand):
+    """Returns just the PID of the thread."""
+
+    def __init__(self):
+        super(JustPIDCommand, self).__init__("thread-pid")
+
+    def action(self, arg, from_tty):
+        thread = threadIDCommand.action()
+        return thread.pid
+
+justPIDCommand = JustPIDCommand()
+```
+
+### Defining a new CLI command
+If you want, you can use the bare Python API to define new CLI commands.
+
+```python
+import gdb
+import sys
+
+
+class GreetCommand(gdb.Command):
+    """My shiny CLI command."""
+
+    def __init__(self, name):
+        super(BaseCommand, self).__init__("greet" + name, gdb.COMMAND_USER)
+
+    def invoke(self, arg, from_tty):
+        sys.stdout.write("Hello {}!".format(arg))
+        sys.stdout.flush()
+
+GreetCommand()
+```
+
+```javascript
+let script = fs.readFileSync('greet.py', { encoding: 'utf8' })
+
+await gdb.execPy(script)
+
+let greetings = await gdb.execCLI('greet World') // 'Hello World!'
+```
+
+### Defining a new event
+```python
+from threading import Timer
+
+
+def hour_passed_handler(arg_1, arg_2)
+    """Handle the time."""
+    
+    base_event_handler("hour-passed", "{} {}, pal...".format(arg_1, arg_2))
+
+Timer(3600.0, hour_passed_handler, ("That's", "sad")).start()
+```
+
+```javascript
+let script = fs.readFileSync('hour.py', { encoding: 'utf8' })
+
+await gdb.execPy(script)
+
+gdb.on('hour-passed', (data) => console.log(data)) // 'That's sad, pal...''
 ```
 
 ## Running tests

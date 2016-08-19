@@ -142,8 +142,8 @@ describe('gdb-js', () => {
       await gdb.exit()
 
       expect(res).to.deep.equal([
-        new Frame({ level: 0, file: '/examples/factorial/factorial.c', line: 24 }),
-        new Frame({ level: 1, file: '/examples/factorial/factorial.c', line: 18 })
+        new Frame({ level: 0, file: '/examples/factorial/factorial.c', line: 23 }),
+        new Frame({ level: 1, file: '/examples/factorial/factorial.c', line: 17 })
       ])
     })
 
@@ -239,11 +239,10 @@ describe('gdb-js', () => {
       gdb.once('stopped', (data) => {
         try {
           expect(data.thread.id).to.equal(threads[0].id)
-          done()
+          gdb.exit().then(() => done())
         } catch (e) { done(e) }
       })
       await gdb.interrupt(threads[0])
-      await gdb.exit()
     })
   })
 
@@ -274,7 +273,7 @@ describe('gdb-js', () => {
         id: 1,
         status: 'stopped',
         group: null,
-        frame: { file: '/examples/factorial/factorial.c', line: 24, level: 0 }
+        frame: { file: '/examples/factorial/factorial.c', line: 23, level: 0 }
       })
     })
 
@@ -297,6 +296,7 @@ describe('gdb-js', () => {
 
     it('can change thread scope', async () => {
       let gdb = await createGDB('tickets')
+      await gdb.init()
       await gdb.addBreak('tickets.c', 48)
       await gdb.run()
       let threads = await gdb.threads()
@@ -364,16 +364,15 @@ describe('gdb-js', () => {
       gdb.once('stopped', (data) => {
         try {
           expect(data.reason).to.equal('exited-normally')
-          done()
+          gdb.exit().then(() => done())
         } catch (e) { done(e) }
       })
       await gdb.run()
-      await gdb.exit()
     })
 
     it('adds additional info to the stopped event', async (done) => {
       let gdb = await createGDB('hello-world')
-      await gdb.addBreak('hello.c', 5)
+      await gdb.addBreak('hello.c', 'main')
       gdb.once('stopped', (data) => {
         try {
           expect(data).to.deep.equal({
@@ -382,16 +381,15 @@ describe('gdb-js', () => {
               id: 1,
               frame: new Frame({
                 file: '/examples/hello-world/hello.c',
-                line: 10
+                line: 9
               })
             }),
             breakpoint: new Breakpoint(1)
           })
-          done()
+          gdb.exit().then(() => done())
         } catch (e) { done(e) }
       })
       await gdb.run()
-      await gdb.exit()
     })
 
     it('fires running event', async (done) => {
@@ -405,11 +403,10 @@ describe('gdb-js', () => {
           gdb.once('running', (data) => {
             try {
               expect(data.thread.id).to.equal(threads[0].id)
-              done()
+              gdb.exit().then(() => done())
             } catch (e) { done(e) }
           })
           await gdb.proceed(threads[0])
-          await gdb.exit()
         }, done)
       })
       await gdb.run()
@@ -421,12 +418,11 @@ describe('gdb-js', () => {
         gdb.once('thread-exited', (thread1) => {
           try {
             expect(thread0).to.deep.equal(thread1)
-            done()
+            gdb.exit().then(() => done())
           } catch (e) { done(e) }
         })
       })
       await gdb.run()
-      await gdb.exit()
     })
 
     it('fires thread-group-started and thread-group-exited events', async (done) => {
@@ -435,12 +431,11 @@ describe('gdb-js', () => {
         gdb.once('thread-group-exited', (group1) => {
           try {
             expect(group0.id).to.equal(group1.id)
-            done()
+            gdb.exit().then(() => done())
           } catch (e) { done(e) }
         })
       })
       await gdb.run()
-      await gdb.exit()
     })
 
     it('fires new-objfile event', async (done) => {
@@ -448,12 +443,11 @@ describe('gdb-js', () => {
       gdb.once('new-objfile', (file) => {
         try {
           expect(file).to.equal('/examples/hello-world/main')
-          done()
+          gdb.exit().then(() => done())
         } catch (e) { done(e) }
       })
       await gdb.init()
       await gdb.execCLI('file ./main')
-      await gdb.exit()
     })
   })
 
@@ -474,11 +468,6 @@ describe('gdb-js', () => {
     it('has atomic methods', async () => {
       let gdb = await createGDB('hello-world')
       let queue = []
-      // It's really important for public methods to not interfere with
-      // each other. They should be atomic, meaning that calling them
-      // simultaneously should produce the same results as calling them in order.
-      // One way to ensure that is to block execution of public methods until
-      // other methods complete.
       await Promise.all([
         gdb.init().then(() => queue.push(0)),
         gdb.sourceFiles().then(() => queue.push(1)),

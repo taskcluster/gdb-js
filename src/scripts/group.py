@@ -2,7 +2,7 @@ import gdb
 
 
 class ThreadGroupCommand(BaseCommand):
-    """Returns current thread group."""
+    """Returns the current thread group."""
 
     def __init__(self):
         super(ThreadGroupCommand, self).__init__("group")
@@ -11,4 +11,4 @@ class ThreadGroupCommand(BaseCommand):
         inferior = gdb.selected_inferior()
         return { 'id': inferior.num, 'pid': inferior.pid }
 
-ThreadGroupCommand()
+gdbjsThreadGroup = ThreadGroupCommand()

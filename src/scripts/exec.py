@@ -10,10 +10,9 @@ class ExecCommand(BaseCommand):
 
     def action(self, arg, from_tty):
         res = gdb.execute(arg, False, True)
-        # Results of CLI commands execution might
-        # contain events and other stuff, so we need
-        # to also expose it to the stdout.
-        sys.stdout.write(res)
+        # Results of CLI execution might accidently contain events.
+        events = re.findall("<gdbjs:event:.*?:event:gdbjs>", res)
+        for e in events: sys.stdout.write(e)
         return res
 
-ExecCommand()
+gdbjsExec = ExecCommand()

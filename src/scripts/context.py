@@ -18,18 +18,18 @@ class ContextCommand(BaseCommand):
                 if (name not in names) and (symbol.is_argument or
                    symbol.is_variable or symbol.is_function or
                    symbol.is_constant):
-                    scope = 'global' if block.is_global else \
-                            'static' if block.is_static else \
-                            'argument' if symbol.is_argument else \
-                            'local'
+                    scope = "global" if block.is_global else \
+                            "static" if block.is_static else \
+                            "argument" if symbol.is_argument else \
+                            "local"
                     names.add(name)
                     variables.append({
-                        'name': symbol.name,
-                        'value': str(symbol.value(frame)),
-                        'type': str(symbol.type),
-                        'scope': scope
+                        "name": symbol.name,
+                        "value": str(symbol.value(frame)),
+                        "type": str(symbol.type),
+                        "scope": scope
                     })
             block = block.superblock
         return variables
 
-ContextCommand()
+gdbjsContext = ContextCommand()

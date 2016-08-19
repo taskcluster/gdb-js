@@ -9,10 +9,10 @@ class SourcesCommand(BaseCommand):
         super(SourcesCommand, self).__init__("sources")
 
     def action(self, arg, from_tty):
-        inferior = gdb.selected_inferior().num
         info = gdb.execute("info sources", False, True)
+        # XXX: not sure, whether there is a better way.
         info = re.sub("Reading symbols .*?\.{3}done\.", "", info)
-        files = re.findall("([/\\\].*?)[,\n]", info)
+        files = re.findall(r"([/\\].*?)[,\n]", info)
         return [f for f in files if re.search(arg, f)]
 
-SourcesCommand()
+gdbjsSources = SourcesCommand()

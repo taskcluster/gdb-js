@@ -1,5 +1,5 @@
 /**
- * Class representing a thread group.
+ * Class representing a thread group (aka target, aka inferior).
  */
 class ThreadGroup {
   /**

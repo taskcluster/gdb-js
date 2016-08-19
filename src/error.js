@@ -10,6 +10,8 @@ class GDBError extends Error {
    * @param {string} cmd Command that led to this error.
    * @param {string} msg Error message.
    * @param {number} [code] Error code.
+   *
+   * @private
    */
   constructor (cmd, msg, code) {
     super(msg)
@@ -30,7 +32,7 @@ class GDBError extends Error {
     /**
      * Error code.
      *
-     * @type {number}
+     * @type {?number}
      **/
     this.code = code
   }

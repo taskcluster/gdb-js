@@ -18,8 +18,7 @@ import Variable from './variable.js'
 import { parse as parseMI } from './parsers/gdbmi.pegjs'
 // Base class for custom GDB commands.
 import baseCommand from './scripts/base.py'
-// Command that executes CLI commands
-// prints the results to stdout and also returns them as a string.
+// Command that executes CLI commands and returns them as a string.
 import execCommand from './scripts/exec.py'
 // Command that lists all symbols (e.g. locals, globals) in the current context.
 import contextCommand from './scripts/context.py'
@@ -68,6 +67,16 @@ function escape (script) {
 }
 
 /**
+ * Task to execute.
+ *
+ * @name Task
+ * @function
+ * @returns {Promise<any, GDBError>|any} Whatever.
+ *
+ * @ignore
+ */
+
+/**
  * Class representing a GDB abstraction.
  *
  * @extends EventEmitter
@@ -92,6 +101,11 @@ class GDB extends EventEmitter {
      * @ignore
      */
     this._queue = _()
+    /**
+     * The mutex to make simultaneous execution of public methods impossible.
+     *
+     * @ignore
+     */
     this._lock = Promise.resolve()
 
     let stream = _(this._process.stdout)
@@ -135,9 +149,6 @@ class GDB extends EventEmitter {
       .map((msg) => JSON.parse(msg[1]))
       .tap(debugCLIResluts)
 
-    // Here, stream should NOT be forked, but observed instead!
-    // It's important, because zipping streams that are forked from
-    // the same source may cause blocking.
     success.observe()
       .filter((msg) => msg.interpreter === 'cli')
       .zip(commands)
@@ -329,14 +340,15 @@ class GDB extends EventEmitter {
      */
     stream.fork()
       .filter((msg) => msg.type === 'console')
-      // Custom `exec` command returns raw console output, so it
-      // might contain events inside it. Thus, we need to strip it.
-      .map((msg) => msg.data.replace(/<gdbjs:cmd:.*?:cmd:gdbjs>/g, ''))
-      .flatMap((msg) => msg.match(/<gdbjs:event:.*?:event:gdbjs>/g) || [])
+      .flatMap((msg) => msg.data.match(/<gdbjs:event:.*?:event:gdbjs>/g) || [])
       .map((msg) => /<gdbjs:event:([a-z-]+) (.*?) [a-z-]+:event:gdbjs>/g.exec(msg))
       .tap((msg) => debugEvents(msg[1], msg[2]))
       .each((msg) => { this.emit(msg[1], msg[2]) })
   }
+
+  // Public methods.
+  // Note, that it's really important to not call public methods
+  // inside other public methods, because it may cause blocking!
 
   /**
    * Get the child process object.
@@ -352,9 +364,10 @@ class GDB extends EventEmitter {
    * Extend GDB CLI interface with some useful commands that are
    * necessary for executing some methods of this GDB wrapper
    * (e.g. {@link GDB#context|context}, {@link GDB#execCLI|execCLI}).
+   * It also enables custom actions (like {@link GDB#new-objfile|`new-objfile` event}).
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   init () {
     return this._sync(async () => {
@@ -373,8 +386,8 @@ class GDB extends EventEmitter {
    * @param {string} param The name of a GDB variable.
    * @param {string} value The value of a GDB variable.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   set (param, value) {
     return this._sync(() => this._set(param, value))
@@ -386,8 +399,8 @@ class GDB extends EventEmitter {
    * sense only for systems that support `fork` and `vfork` calls.
    * It won't work for Windows, for example.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   attachOnFork () {
     return this._sync(() => this._set('detach-on-fork', 'off'))
@@ -395,10 +408,9 @@ class GDB extends EventEmitter {
 
   /**
    * Enable async and non-stop modes in GDB. This mode is *highly* recommended!
-   * Also, it changes the behaviour of the {@link GDB#interrupt|interrupt} method.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   enableAsync () {
     return this._sync(async () => {
@@ -418,20 +430,17 @@ class GDB extends EventEmitter {
    *
    * @param {number} pid The process id or to attach.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<ThreadGroup>} A promise that resolves/rejects with the added
-   *   thread group.
+   * @returns {Promise<ThreadGroup, GDBError>} A promise that resolves/rejects
+   *   with the added thread group.
    */
   attach (pid) {
-    let task = async () => {
+    return this._sync(() => async () => {
       let res = await this._execCMD('exec add-inferior')
       let id = toInt(/Added inferior (\d+)/.exec(res)[1])
       let group = new ThreadGroup(id)
       await this._execMI('-target-attach ' + pid, group)
       return group
-    }
-
-    return this._sync(() => this._preserveState(task))
+    })
   }
 
   /**
@@ -439,8 +448,8 @@ class GDB extends EventEmitter {
    *
    * @param {ThreadGroup|number} process The process id or the thread group to detach.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   detach (process) {
     return this._sync(() => this._execMI('-target-detach ' +
@@ -452,18 +461,19 @@ class GDB extends EventEmitter {
    * it interrupts all threads. In non-stop mode it can interrupt only specific thread or
    * a thread group.
    *
-   * @param {Thread|ThreadGroup} [arg] The thread or thread-group to interrupt.
+   * @param {Thread|ThreadGroup} [scope] The thread or thread-group to interrupt.
+   *   If this parameter is omitted, it will interrupt all threads.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   interrupt (scope) {
     return this._sync(() => {
       if (!this._async) {
         this._process.kill('SIGINT')
       } else {
-        return scope ? this._execMI('-exec-interrupt', scope)
-          : this._execMI('-exec-interrupt --all')
+        return this._execMI(scope
+          ? '-exec-interrupt' : '-exec-interrupt --all', scope)
       }
     })
   }
@@ -476,9 +486,8 @@ class GDB extends EventEmitter {
    *   or it's outdated). If this parameter is absent, then information about all
    *   threads is returned.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<Thread[]|Thread>} A promise that resolves with an array of threads
-   *   or a single thread.
+   * @returns {Promise<Thread[]|Thread, GDBError>} A promise that resolves with an array
+   *   of threads or a single thread.
    */
   threads (scope) {
     return this._sync(async () => {
@@ -508,10 +517,24 @@ class GDB extends EventEmitter {
     })
   }
 
+  /**
+   * Get the current thread.
+   *
+   * @returns {Promise<Thread, GDBError>} A promise that resolves with a thread.
+   */
   currentThread () {
     return this._sync(() => this._currentThread())
   }
 
+  /**
+   * Although you can pass scope to commands, you can also explicitly change
+   * the context of command execution. Sometimes it might be slightly faster.
+   *
+   * @param {Thread} thread The thread that should be selected.
+   *
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
+   */
   selectThread (thread) {
     return this._sync(() => this._selectThread(thread))
   }
@@ -519,37 +542,34 @@ class GDB extends EventEmitter {
   /**
    * Get thread groups.
    *
-   * @param {boolean} all Whether to display all available or just current thread groups.
-   *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<ThreadGroup[]>} A promise that resolves with an array thread groups.
+   * @returns {Promise<ThreadGroup[], GDBError>} A promise that resolves with
+   *   an array thread groups.
    */
-  threadGroups (all) {
-    return this._sync(() => this._threadGroups(all))
+  threadGroups () {
+    return this._sync(() => this._threadGroups())
   }
 
   /**
-   * Returns the current thread group.
+   * Get the current thread group.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<ThreadGroup>} A promise that resolves with the thread group.
+   * @returns {Promise<ThreadGroup, GDBError>} A promise that resolves with the thread group.
    */
   currentThreadGroup () {
     return this._sync(() => this._currentThreadGroup())
   }
 
+  /**
+   * Although you can pass scope to commands, you can also explicitly change
+   * the context of command execution. Sometimes it might be slightly faster.
+   *
+   * @param {ThreadGroup} group The thread group that should be selected.
+   *
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
+   */
   selectThreadGroup (group) {
     return this._sync(() => this._selectThreadGroup(group))
   }
-
-  /**
-   * Selects the thread group (i.e. target/inferior).
-   *
-   * @param {ThreadGroup} [group] The thread group to select.
-   *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
-   */
 
   /**
    * Insert a breakpoint at the specified position.
@@ -559,8 +579,7 @@ class GDB extends EventEmitter {
    * @param {Thread} [thread] The thread where breakpoint should be set.
    *   If this field is absent, breakpoint applies to all threads.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<Breakpoint>} A promise that resolves with a breakpoint.
+   * @returns {Promise<Breakpoint, GDBError>} A promise that resolves with a breakpoint.
    */
   addBreak (file, pos, thread) {
     return this._sync(async () => {
@@ -580,8 +599,8 @@ class GDB extends EventEmitter {
    *
    * @param {Breakpoint} [bp] The breakpoint.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   removeBreak (bp) {
     return this._sync(() => this._execMI('-break-delete ' + bp.id))
@@ -590,44 +609,50 @@ class GDB extends EventEmitter {
   /**
    * Step in.
    *
-   * @param {Thread} [thread] The thread where the stepping should be done.
+   * @param {Thread|ThreadGroup} [scope] The thread or thread group where
+   *   the stepping should be done.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
-  stepIn (thread) {
-    return this._sync(() => this._execMI('-exec-step', thread))
+  stepIn (scope) {
+    return this._sync(() => this._execMI('-exec-step', scope))
   }
 
   /**
    * Step out.
    *
-   * @param {Thread} [thread] The thread where the stepping should be done.
+   * @param {Thread|ThreadGroup} [scope] The thread or thread group where
+   *   the stepping should be done.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
-  stepOut (thread) {
-    return this._sync(() => this._execMI('-exec-finish', thread))
+  stepOut (scope) {
+    return this._sync(() => this._execMI('-exec-finish', scope))
   }
 
   /**
    * Execute to the next line.
    *
-   * @param {Thread} [thread] The thread where the stepping should be done.
+   * @param {Thread|ThreadGroup} [scope] The thread or thread group where
+   *   the stepping should be done.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
-  next (thread) {
-    return this._sync(() => this._execMI('-exec-next', thread))
+  next (scope) {
+    return this._sync(() => this._execMI('-exec-next', scope))
   }
 
   /**
    * Run the current target.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @param {ThreadGroup} [group] The thread group to run.
+   *   If this parameter is omitted, current thread group will be run.
+   *
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   run (group) {
     // XXX: seems like MI command `-exec-run` has a bug that makes it
@@ -640,15 +665,15 @@ class GDB extends EventEmitter {
   /**
    * Continue execution.
    *
-   * @param {Thread|ThreadGroup} [arg] The thread that should be continued.
-   *   If this parameter is absent, all threads are continued.
+   * @param {Thread|ThreadGroup} [scope] The thread or thread group that should be continued.
+   *   If this parameter is omitted, all threads are continued.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   proceed (scope) {
-    return this._sync(() => scope ? this._execMI('-exec-continue', scope)
-      : this._execMI('-exec-continue --all'))
+    return this._sync(() => this._execMI(scope
+      ? '-exec-continue' : '-exec-continue --all', scope))
   }
 
   /**
@@ -657,8 +682,8 @@ class GDB extends EventEmitter {
    *
    * @param {Thread} [thread] The thread from which the context should be taken.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<Variable[]>} A promise that resolves with an array of variables.
+   * @returns {Promise<Variable[], GDBError>} A promise that resolves with
+   *   an array of variables.
    */
   context (thread) {
     return this._sync(async () => {
@@ -672,8 +697,7 @@ class GDB extends EventEmitter {
    *
    * @param {Thread} [thread] The thread from which the callstack should be taken.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<Frame[]>} A promise that resolves with an array of frames.
+   * @returns {Promise<Frame[], GDBError>} A promise that resolves with an array of frames.
    */
   callstack (thread) {
     return this._sync(async () => {
@@ -702,11 +726,11 @@ class GDB extends EventEmitter {
    *   This option is useful when the project has a lot of files so that
    *   it's not desirable to send them all in one chunk along the wire.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<string[]>} A promise that resolves with an array of source files.
+   * @returns {Promise<string[], GDBError>} A promise that resolves with
+   *   an array of source files.
    */
   sourceFiles (options = {}) {
-    let task = async () => {
+    return this._sync(async () => {
       let files = []
       let group = options.group
       let pattern = options.pattern || ''
@@ -723,19 +747,17 @@ class GDB extends EventEmitter {
       }
 
       return files
-    }
-
-    return this._sync(() => this._preserveState(task))
+    })
   }
 
   /**
    * Evaluate a GDB expression.
    *
    * @param {string} expr The expression to evaluate.
-   * @param {Thread} [thread] The thread where the expression should be evaluated.
+   * @param {Thread|ThreadGroup} [scope] The thread or thread group where
+   *   the expression should be evaluated.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<string>} A promise that resolves with the result of expression.
+   * @returns {Promise<string, GDBError>} A promise that resolves with the result of expression.
    */
   evaluate (expr, scope) {
     return this._sync(async () => {
@@ -747,22 +769,22 @@ class GDB extends EventEmitter {
   /**
    * Exit GDB.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise} A promise that resolves/rejects after completion of a GDB/MI command.
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
    */
   exit () {
     return this._sync(() => this._execMI('-gdb-exit'))
   }
 
   /**
-   * Execute a custom python script. Internally it calls {@link GDB#execCLI|execCLI}
-   * method. Thus, everything about it applies to this method as well. So, if your
-   * python script is asynchronous and you're interested in its output, you should
-   * listen to {@link GDB#event:console|raw console output}. Here's the example below.
+   * Execute a custom python script and get the results of its excecution.
+   * If your python script is asynchronous and you're interested in its output, you should
+   * either define a new event (refer to the *Extending* section in the main page) or
+   * read the {@link GDB#consoleStream|console stream}. Here's the example below.
    *
    * By the way, with this method you can define your own CLI commands and then call
-   * them via {@link GDB#execCLI|execCLI} method. For more examples, see `scripts` folder
-   * in the main repository and read
+   * them via {@link GDB#execCLI|execCLI} method. For more examples, refer to the *Extending*
+   * section on the main page and read
    * {@link https://sourceware.org/gdb/current/onlinedocs/gdb/Python-API.html|official GDB Python API}
    * and {@link https://sourceware.org/gdb/wiki/PythonGdbTutorial|PythonGdbTutorial}.
    *
@@ -776,10 +798,10 @@ class GDB extends EventEmitter {
    *     sys.stdout.write('bar')
    *     sys.stdout.flush()
    *
-   * timer = threading.Timer(5, foo)
+   * timer = threading.Timer(5.0, foo)
    * timer.start()
    * `
-   * gdb.on('console', (str) => {
+   * gdb.consoleStream.on('data', (str) => {
    *   if (str === 'bar') console.log('yep')
    * })
    * await gdb.execPy(script)
@@ -787,46 +809,113 @@ class GDB extends EventEmitter {
    * @param {string} src The python script.
    * @param {Thread} [thread] The thread where the script should be executed.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<string>} A promise that resolves with the output of
+   * @returns {Promise<string, GDBError>} A promise that resolves with the output of
    *   python script execution.
    */
   execPy (src, scope) {
     return this._sync(() => this._execCMD(`exec python\\n${escape(src)}`, scope))
   }
 
+  /**
+   * Execute a CLI command.
+   *
+   * @param {string} cmd The CLI command.
+   * @param {Thread|ThreadGroup} [scope] The thread where the command should be executed.
+   *
+   * @returns {Promise<string, GDBError>} A promise that resolves with
+   *   the result of command execution.
+   */
   execCLI (cmd, scope) {
     return this._sync(() => this._execCMD(`exec ${cmd}`, scope))
   }
 
+  /**
+   * Execute a custom defined command. Refer to the *Extending* section on the main
+   * page of the documentation.
+   *
+   * @param {string} cmd The name of the command.
+   * @param {Thread|ThreadGroup} [scope] The thread or thread-group where
+   *   the command should be executed. If this parameter is omitted,
+   *   it executes in the current thread.
+   *
+   * @returns {Promise<object, GDBError>} A promise that resolves with
+   *   the JSON representation of the result of command execution.
+   */
+  execCMD (cmd, scope) {
+    return this._sync(() => this._execCMD(cmd, scope))
+  }
+
+  /**
+   * Execute a MI command.
+   *
+   * @param {string} cmd The MI command.
+   * @param {Thread|ThreadGroup} [scope] The thread or thread-group where
+   *   the command should be executed. If this parameter is omitted,
+   *   it executes in the current thread.
+   *
+   * @returns {Promise<object, GDBError>} A promise that resolves with
+   *   the JSON representation of the result of command execution.
+   */
   execMI (cmd, scope) {
     return this._sync(() => this._execMI(cmd, scope))
   }
 
   // Private methods
+  // Note that it's necessary to not call public methods and {@link GDB#_sync}
+  // method in these methods since it may cause blocking.
 
+  /**
+   * Internal method for setting values. See {@link GDB#set}.
+   *
+   * @ignore
+   */
   async _set (param, value) {
     await this._execMI(`-gdb-set ${param} ${value}`)
   }
 
+  /**
+   * Internal method for getting the current thread. See {@link GDB#currentThread}.
+   *
+   * @ignore
+   */
   async _currentThread () {
     let { id, group} = await this._execCMD('thread')
     return id ? new Thread(id, { group }) : null
   }
 
+  /**
+   * Internal method for getting the current thread group. See {@link GDB#currentThreadGroup}.
+   *
+   * @ignore
+   */
   async _currentThreadGroup () {
     let { id, pid } = await this._execCMD('group')
     return new ThreadGroup(id, { pid })
   }
 
+  /**
+   * Internal method for selecting the thread groups. See {@link GDB#selectThread}.
+   *
+   * @ignore
+   */
   async _selectThread (thread) {
     await this._execMI('-thread-select ' + thread.id)
   }
 
+  /**
+   * Internal method for selecting the thread group. See {@link GDB#selectThreadGroup}.
+   *
+   * @ignore
+   */
   async _selectThreadGroup (group) {
     await this._execCMD('exec inferior ' + group.id)
   }
 
+  /**
+   * Internal method for getting thread groups. See {@link GDB#threadGroups}.
+   *
+   * @ignore
+   */
   async _threadGroups () {
     let { groups } = await this._execMI('-list-thread-groups')
     return groups.map((g) => new ThreadGroup(toInt(g.id.slice(1)), {
@@ -835,7 +924,16 @@ class GDB extends EventEmitter {
     }))
   }
 
-  async _preserveState (task) {
+  /**
+   * Helps to restore the current thread between operations and avoid side effect.
+   *
+   * @param {Task} [task] The task to execute.
+   *
+   * @returns {Promise<any, GDBError>} A promise that resolves with task results.
+   *
+   * @ignore
+   */
+  async _preserveThread (task) {
     let thread = await this._currentThread()
     let res = await task()
     if (thread) await this._selectThread(thread)
@@ -843,64 +941,50 @@ class GDB extends EventEmitter {
   }
 
   /**
-   * Execute a CLI command. Internally it calls `gdbjs-concat` CLI command that is
-   * defined in the {@link GDB#init|init} method. This command executes a given CLI
-   * command and puts its output to a single console record with a prepended prefix.
-   * (defaults to `"GDBJS^"`). This is how GDB-JS is able to distinguish responses
-   * to your commands and random GDB/MI console records. Note that it will return
-   * only synchronous responses. If a CLI command is asynchronous and you are interested
-   * in its output, you should listen to {@link GDB#event:console|raw console output}.
+   * Internal method for calling defined Python commands. See {@link GDB#execCMD}.
    *
-   * @param {string} cmd The CLI command.
-   * @param {Thread|ThreadGroup} [scope] The thread where the command should be executed.
-   *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<string>} A promise that resolves with the result of command execution.
+   * @ignore
    */
   _execCMD (cmd, scope) {
     if (scope instanceof Thread) {
-      return this._exec(`thread apply ${scope.id} gdbjs-${cmd}`, 'cli')
+      return this._preserveThread(() =>
+        this._selectThread(scope).then(() => this._exec(cmd, 'cli')))
     } else if (scope instanceof ThreadGroup) {
-      return this._exec('gdbjs-exec inferior ' + scope.id, 'cli')
-        .then(() => this._exec('gdbjs-' + cmd, 'cli'))
+      return this._preserveThread(() =>
+        this._selectThreadGroup(scope).then(() => this._exec(cmd, 'cli')))
     } else {
-      return this._exec('gdbjs-' + cmd, 'cli')
+      return this._exec(cmd, 'cli')
     }
   }
 
   /**
-   * Execute a MI command.
+   * Internal method for calling MI commands. See {@link GDB#execMI}.
    *
-   * @param {string} cmd The MI command.
-   * @param {Thread|ThreadGroup} [scope] The thread or thread-group where
-   *   the command should be executed.
-   *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with the JSON representation
-   *   of the result of command execution.
+   * @ignore
    */
   _execMI (cmd, scope) {
-    let parts = cmd.split(/ (.+)/)
-    let options = parts.length > 1 ? parts[1] : ''
-    // Most of GDB/MI commands support `--thread` option.
-    // However, in order to work it should be the first option.
-    return this._exec(scope instanceof Thread
-      ? `${parts[0]} --thread ${scope.id} ${options}`
-      : scope instanceof ThreadGroup
-      ? `${parts[0]} --thread-group i${scope.id} ${options}`
-      : cmd, 'mi')
+    let [, name, options] = /([^ ]+)( .*|)/.exec(cmd)
+
+    if (scope instanceof Thread) {
+      return this._exec(`${name} --thread ${scope.id} ${options}`, 'mi')
+    } else if (scope instanceof ThreadGroup) {
+      // `--thread-group` option changes thread.
+      return this._preserveThread(() =>
+        this._exec(`${name} --thread-group i${scope.id} ${options}`, 'mi'))
+    } else {
+      return this._exec(cmd, 'mi')
+    }
   }
 
   /**
    * Internal method that executes a MI command and add it to the queue where it
    * waits for the results of execution.
    *
-   * @param {string} cmd The command.
+   * @param {string} cmd The command (eaither a MI or a defined Python command).
    * @param {string} interpreter The interpreter that should execute the command.
    *
-   * @throws {GDBError} Internal GDB errors that arise in the MI interface.
-   * @returns {Promise<object>} A promise that resolves with the JSON representation
-   *   of the result of command execution.
+   * @returns {Promise<object, GDBError>} A promise that resolves with
+   *   the JSON representation of the result of command execution.
    *
    * @ignore
    */
@@ -919,6 +1003,21 @@ class GDB extends EventEmitter {
     })
   }
 
+  /**
+   * This routine makes it impossible to run multiple punlic methods
+   * simultaneously. Why this matter? It's really important for public
+   * methods to not interfere with each other, because they can change
+   * the state of GDB during execution. They should be atomic,
+   * meaning that calling them simultaneously should produce the same
+   * results as calling them in order. One way to ensure that is to block
+   * execution of public methods until other methods complete.
+   *
+   * @param {Task} task The task to execute.
+   *
+   * @returns {Promise<any, GDBError>} A promise that resolves with task results.
+   *
+   * @ignore
+   */
   _sync (task) {
     this._lock = this._lock.then(() => task())
     return this._lock

@@ -9,7 +9,7 @@ class Thread {
    *
    * @param {number} id The internal GDB ID of a thread.
    * @param {object} [options] The options object.
-   * @param {string} [options.stopped] The thread status (e.g. `stopped`).
+   * @param {string} [options.status] The thread status (e.g. `stopped`).
    * @param {ThreadGroup} [options.group] The thread group.
    * @param {Frame} [options.frame] The frame where thread is currently on.
    */

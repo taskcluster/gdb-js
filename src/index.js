@@ -251,7 +251,8 @@ class GDB extends EventEmitter {
             frame: new Frame({
               file: data.frame.fullname,
               line: toInt(data.frame.line)
-            })
+            }),
+            status: 'stopped'
           })
         }
         if (data.reason === 'breakpoint-hit') {
@@ -276,7 +277,7 @@ class GDB extends EventEmitter {
         let thread = data['thread-id']
         let event = {}
         if (thread !== 'all') {
-          event.thread = new Thread(toInt(thread))
+          event.thread = new Thread(toInt(thread), { status: 'running' })
         }
 
         this.emit('running', event)

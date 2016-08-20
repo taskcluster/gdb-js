@@ -4,7 +4,7 @@ Seamless GDB wrapper for Node.js (>= 0.12) and the browser.
 It can be used to build different kinds of frontends for GDB.
 
 ## Documentation
-[Documentation is availabe here](https://baygeldin.github.io/gdb-js).  
+[Documentation is availabe here](https://taskcluster.github.io/gdb-js).  
 Reading the sources of tests is also useful.
 
 ## Features

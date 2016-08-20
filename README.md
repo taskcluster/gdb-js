@@ -1,4 +1,4 @@
-# gdb-js [![Build Status](https://travis-ci.org/baygeldin/gdb-js.svg?branch=master)](https://travis-ci.org/baygeldin/gdb-js)
+# gdb-js [![Build Status](https://travis-ci.org/taskcluster/gdb-js.svg?branch=master)](https://travis-ci.org/taskcluster/gdb-js)
 
 Seamless GDB wrapper for Node.js (>= 0.12) and the browser.  
 It can be used to build different kinds of frontends for GDB.

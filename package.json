@@ -7,7 +7,7 @@
   "main": "lib/index.js",
   "scripts": {
     "pretest": "npm run docker-run",
-    "test": "mocha || true",
+    "test": "mocha || (npm run posttest && false)",
     "posttest": "npm run docker-rm",
     "prepublish": "npm run release && npm test && npm run lint",
     "postpublish": "npm run clean",

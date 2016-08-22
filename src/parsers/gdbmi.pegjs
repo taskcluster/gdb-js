@@ -85,7 +85,7 @@ Tuple
     }
 
 List
-  = "[]" / "[" value:Value values:ValuesList "]" { return [value, ...values] }
+  = "[]" { return []; } / "[" value:Value values:ValuesList "]" { return [value, ...values] }
   / "[" result:Result results:ResultsList "]" { return [result, ...results] }
 
 ResultClass

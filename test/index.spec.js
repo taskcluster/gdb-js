@@ -382,7 +382,8 @@ describe('gdb-js', () => {
               frame: new Frame({
                 file: '/examples/hello-world/hello.c',
                 line: 9
-              })
+              }),
+              status: 'stopped'
             }),
             breakpoint: new Breakpoint(1)
           })

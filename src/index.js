@@ -510,10 +510,10 @@ class GDB extends EventEmitter {
         return mapToThread(threads[0])
       } else if (scope instanceof ThreadGroup) {
         let { threads } = await this._execMI(`-list-thread-groups i${scope.id}`)
-        return threads.map(mapToThread)
+        return threads ? threads.map(mapToThread) : []
       } else {
         let { threads } = await this._execMI('-thread-info')
-        return threads.map(mapToThread)
+        return threads ? threads.map(mapToThread) : []
       }
     })
   }

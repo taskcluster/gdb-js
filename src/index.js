@@ -1020,7 +1020,7 @@ class GDB extends EventEmitter {
    * @ignore
    */
   _sync (task) {
-    this._lock = this._lock.then(() => task())
+    this._lock = this._lock.then(task, task)
     return this._lock
   }
 }

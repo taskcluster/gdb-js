@@ -182,3 +182,16 @@ $ npm install
 $ npm run docker-pull
 $ npm test
 ```
+Tests require Docker to be installed.
+
+## Generating documentation
+```
+$ npm run docs
+```
+It will generate static pages in the `/docs` folder. It's also convinient to have the repository cloned into `/docs` folder with the `gh-pages` branch checked out. This way deploying the documentation is really easy:
+```
+$ npm run docs
+$ cd docs
+$ git commit -a -m "update"
+$ git push
+```

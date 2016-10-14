@@ -1,9 +1,14 @@
 /* eslint-env mocha */
 
+import fs from 'fs'
 import { expect } from 'chai'
 import { PassThrough } from 'stream'
 import Docker from 'dockerode-promise'
+import peg from 'pegjs'
 import { GDB, Thread, ThreadGroup, Breakpoint, Frame } from '../lib'
+
+let parser = fs.readFileSync('src/parsers/gdbmi.pegjs', 'utf8')
+let parseMI = peg.buildParser(parser).parse
 
 let docker = new Docker({ socketPath: '/var/run/docker.sock' })
 let container = docker.getContainer('gdb-js')
@@ -478,6 +483,23 @@ describe('gdb-js', () => {
       ])
 
       expect(queue).to.deep.equal([0, 1, 2, 3, 4])
+    })
+  })
+
+  describe('parser', () => {
+    it('handles anonymous records', () => {
+      let record = '+download,{section=".isr_vector",section-size="776"}'
+
+      expect(parseMI(record)).to.deep.equal({
+        type: 'status',
+        state: 'download',
+        data: {
+          unnamed: {
+            section: '.isr_vector',
+            'section-size': '776'
+          }
+        }
+      })
     })
   })
 })

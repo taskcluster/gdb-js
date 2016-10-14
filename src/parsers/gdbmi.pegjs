@@ -5,7 +5,7 @@
     // Below code helps to turn such records into the array.
 
     for (let i = 0; i < arr.length; i++) {
-      if (!arr[i].name) arr[i].name = arr[i - 1].name
+      if (!arr[i].name) arr[i].name = arr[i - 1] ? arr[i - 1].name : 'unnamed';
     }
 
     let res = arr.reduce((acc, r) => {

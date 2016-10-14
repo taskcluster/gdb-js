@@ -1025,4 +1025,5 @@ class GDB extends EventEmitter {
   }
 }
 
-export { GDB, Thread, ThreadGroup, Breakpoint, Frame, Variable }
+export { GDB, Thread, ThreadGroup, Breakpoint,
+  Frame, Variable, parseMI as _parseMI }

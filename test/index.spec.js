@@ -1,14 +1,10 @@
 /* eslint-env mocha */
 
-import fs from 'fs'
 import { expect } from 'chai'
 import { PassThrough } from 'stream'
 import Docker from 'dockerode-promise'
-import peg from 'pegjs'
-import { GDB, Thread, ThreadGroup, Breakpoint, Frame } from '../lib'
-
-let parser = fs.readFileSync('src/parsers/gdbmi.pegjs', 'utf8')
-let parseMI = peg.buildParser(parser).parse
+import { GDB, Thread, ThreadGroup, Breakpoint,
+  Frame, _parseMI as parseMI } from '../lib'
 
 let docker = new Docker({ socketPath: '/var/run/docker.sock' })
 let container = docker.getContainer('gdb-js')

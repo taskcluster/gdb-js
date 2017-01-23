@@ -1,6 +1,5 @@
 import path from 'path'
 import webpack from 'webpack'
-import nodeExternals from 'webpack-node-externals'
 
 export default {
   entry: path.resolve('src/index.js'),
@@ -34,7 +33,7 @@ export default {
     }]
   },
 
-  externals: [nodeExternals()],
+  externals: ['debug', 'highland'],
 
   devtool: 'source-map'
 }

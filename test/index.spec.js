@@ -497,5 +497,11 @@ describe('gdb-js', () => {
         }
       })
     })
+
+    it('handles underscores in names', () => {
+      let record = '^done,name="v1",numchild="0",value="1",type="int",thread-id="1",has_more="0"'
+
+      expect(parseMI(record)).to.have.deep.property('data.has_more', '0')
+    })
   })
 })

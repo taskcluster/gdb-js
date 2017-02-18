@@ -498,13 +498,13 @@ describe('gdb-js', () => {
       })
       await gdb.run()
       await stopped
-      let locals_mi = gdb.execMI('-stack-list-variables 1')
-      let locals_cli = gdb.execCLI('info locals')
+      let localsMI = gdb.execMI('-stack-list-variables 1')
+      let localsCLI = gdb.execCLI('info locals')
       let context = await gdb.context()
       await gdb.exit()
 
-      expect(locals_mi.data.variables[0].value).to.contain('"äÃ¤𩸽"')
-      expect(locals_cli.data).to.contain('"äÃ¤𩸽"')
+      expect(localsMI.data.variables[0].value).to.contain('"äÃ¤𩸽"')
+      expect(localsCLI.data).to.contain('"äÃ¤𩸽"')
       expect(context[0].value).to.contain('"äÃ¤𩸽"')
     })
   })

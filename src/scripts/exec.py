@@ -1,5 +1,6 @@
 import gdb
 import sys
+import re
 
 
 class ExecCommand(BaseCommand):

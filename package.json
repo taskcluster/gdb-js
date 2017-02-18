@@ -31,12 +31,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/baygeldin/gdb-js.git"
+    "url": "git+https://github.com/taskcluster/gdb-js.git"
   },
   "bugs": {
-    "url": "https://github.com/baygeldin/gdb-js/issues"
+    "url": "https://github.com/taskcluster/gdb-js/issues"
   },
-  "homepage": "https://github.com/baygeldin/gdb-js#readme",
+  "homepage": "https://github.com/taskcluster/gdb-js#readme",
   "devDependencies": {
     "babel-core": "^6.8.0",
     "babel-eslint": "^6.0.4",

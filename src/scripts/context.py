@@ -1,4 +1,5 @@
 import gdb
+from builtins import str
 
 
 class ContextCommand(BaseCommand):

@@ -95,10 +95,11 @@ AsyncClass
   = "stopped" / String
 
 Const "c-string"
-  = "\"" chars:Char* "\"" { return chars.join('') }
+  = "\"" chars:Char* "\"" { return decodeURIComponent(chars.join('')) }
 
 Char "char"
-  = [\x20-\x21\x23-\x5B\x5D-\u10FFFF]
+  = [^%\\\"] / "%" { return '%25' }
+  / "\\" seq:([0-7][0-7][0-7]) { return '%' + parseInt(seq.join(''), 8).toString(16) }
   / "\\" seq:Escaped { return seq }
 
 Escaped "escaped"

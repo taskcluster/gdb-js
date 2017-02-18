@@ -1,6 +1,6 @@
 {
   "name": "gdb-js",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "author": "Alexander Baygeldin <a.baygeldin@gmail.com>",
   "description": "JavaScript interface for GDB.",
   "license": "MPL-2.0",

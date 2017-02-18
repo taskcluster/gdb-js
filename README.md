@@ -18,6 +18,8 @@ Reading the sources of tests is also useful.
 * GDB >= 7.3 is required.
 * GDB should support Python.
 * GDB should be used in MI mode (i.e. `gdb -i=mi`).
+* If Python 2.x is used then `future` module should be installed with `pip`.
+* **gdb-js** needs `babel-polyfill` to work, or if you're heading to ES6 environment, just `regenerator runtime`.
 * Although it's possible to use **gdb-js** in the `all-stop` mode, it makes much more sense for a frontend to work with the `non-stop` mode (together with `target-async`). So, it's recommended that `enableAsync` method should be called.
 * Execution of all CLI commands is possible only after calling `init` method which defines some custom supportive commands in GDB. However, you can load them (`scripts` folder in the project repository) manually with `.gdbinit` for example.
 * **gdb-js** is a seamless wrapper. It means that it doesn't have any assumptions about your goals and doesn't do anything behind the scenes. So, if something is going wrong it's probably a problem with your GDB usage (i.e. the same problem can be reproduced within a bare console).
@@ -26,7 +28,6 @@ Reading the sources of tests is also useful.
 * For browsers it makes sense to make use of utilities that expose process streams (i.e. stdin/stdout/stderr) through WebSockets.
 * All methods (where it makes sense) accept thread as the last parameter. So, you can step/continue/interrupt/inspect any thread you want.
 * If you're debugging a target that spawns new processes with `fork`, just call `attachOnFork` method and you're done. If not and you still need to debug multiple targets you should attach them manually (see [the official GDB documentation](https://sourceware.org/gdb/onlinedocs/gdb/Forks.html)).
-* **gdb-js** needs `babel-polyfill` to work, or if you're heading to ES6 environment, just `regenerator runtime`.
 
 ## Install
 ```

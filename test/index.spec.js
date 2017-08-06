@@ -311,8 +311,11 @@ describe('gdb-js', () => {
 
   describe('multiple process support', () => {
     it('can attach a running target', async () => {
-      let game = await container.exec({ Cmd: ['./guess-game/main'] })
-      await game.start()
+      let game = await container.exec({
+        Cmd: ['./guess-game/main'],
+        AttachStdin: true
+      })
+      await game.start({ stdin: true })
       let gdb = await createGDB('hello-world')
       await gdb.init()
       let { groups } = await gdb.execMI('-list-thread-groups --available')

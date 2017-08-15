@@ -586,11 +586,12 @@ class GDB extends EventEmitter {
     return this._sync(async () => {
       let opt = thread ? '-p ' + thread.id : ''
       let { bkpt } = await this._execMI(`-break-insert ${opt} ${file}:${pos}`)
-      if (bkpt instanceof Array) {
+      if (Array.isArray(bkpt)) {
         return new Breakpoint(toInt(bkpt[0].number), {
           file: bkpt[1].fullname,
-          line: toInt(bkpt[1].line),
-          func: bkpt[1].func
+          line: bkpt[1].line,
+          func: bkpt.map((b) => b.func).filter((f) => !!f),
+          thread
         })
       } else {
         return new Breakpoint(toInt(bkpt.number), {

@@ -132,6 +132,16 @@ describe('gdb-js', () => {
       await gdb.removeBreak(bp)
       await gdb.exit()
     })
+
+    it('supports templates and auto types', async () => {
+      let gdb = await createGDB('templates')
+      let bp = await gdb.addBreak('templates.cpp', 8)
+      expect(bp.func).to.deep.equal([
+        'max<char>(char const*, int)',
+        'max<int>(int const*, int)'
+      ])
+      await gdb.exit()
+    })
   })
 
   describe('stack info', () => {

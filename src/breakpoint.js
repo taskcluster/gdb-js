@@ -11,7 +11,8 @@ class Breakpoint {
    * @param {object} [options] The options object.
    * @param {string} [options.file] The full path to a file in which breakpoint appears.
    * @param {number} [options.line] The line number at which the breakpoint appears.
-   * @param {string} [options.func] The function in which the breakpoint appears.
+   * @param {string|string[]} [options.func] The function in which the breakpoint appears
+   *   or an array of functions (e.g. in case of templates).
    * @param {Thread} [options.thread] The thread for thread-specific breakpoints.
    */
   constructor (id, options = {}) {
@@ -37,9 +38,10 @@ class Breakpoint {
     this.line = options.line || null
 
     /**
-     * The function in which the breakpoint appears.
+     * The function in which the breakpoint appears
+     * or an array of functions (e.g. in case of templates).
      *
-     * @type {?string}
+     * @type {?string|string[]}
      */
     this.func = options.func || null
 

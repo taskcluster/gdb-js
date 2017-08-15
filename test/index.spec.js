@@ -74,7 +74,7 @@ describe('gdb-js', () => {
       let gdb = await createGDB('hello-world')
       gdb.consoleStream.once('data', (data) => {
         try {
-          expect(data).to.equal('GNU gdb (Ubuntu 7.11.1-0ubuntu1~16.04) 7.11.1\n')
+          expect(data).to.equal('GNU gdb (GDB) 7.12.1\n')
           done()
         } catch (e) { done(e) }
       })
@@ -98,8 +98,11 @@ describe('gdb-js', () => {
 
     it('emits raw async records', async (done) => {
       let gdb = await createGDB('hello-world')
+      let bpModified = false
       gdb.on('notify', (msg) => {
+        if (bpModified) return
         if (msg.state === 'breakpoint-modified') {
+          bpModified = true
           try {
             expect(msg.data.bkpt.func).to.equal('main')
             done()
@@ -182,7 +185,7 @@ describe('gdb-js', () => {
       let res = await gdb.sourceFiles()
       await gdb.exit()
 
-      expect(res).to.deep.equal(['/examples/factorial/factorial.c'])
+      expect(res).to.include.members(['/examples/factorial/factorial.c'])
     })
 
     it('searches for source files using regex', async () => {
@@ -191,7 +194,7 @@ describe('gdb-js', () => {
       let res = await gdb.sourceFiles({ pattern: 'hello.c$' })
       await gdb.exit()
 
-      expect(res).to.deep.equal(['/examples/hello-world/hello.c'])
+      expect(res).to.include.members(['/examples/hello-world/hello.c'])
     })
 
     it('returns source files for all thread groups', async () => {
@@ -226,7 +229,7 @@ describe('gdb-js', () => {
       let res = await gdb.sourceFiles({ group })
       await gdb.exit()
 
-      expect(res).to.deep.equal(['/examples/factorial/factorial.c'])
+      expect(res).to.include.members(['/examples/factorial/factorial.c'])
     })
   })
 

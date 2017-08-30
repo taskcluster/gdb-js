@@ -583,9 +583,49 @@ class GDB extends EventEmitter {
    * @returns {Promise<Breakpoint, GDBError>} A promise that resolves with a breakpoint.
    */
   addBreak (file, pos, thread) {
+    return this.addOptionsBreak(`${file}:${pos}`)
+  }
+
+  /**
+   * Insert a breakpoint at the specified function.
+   *
+   * @param {string} label The function.
+   * @param {Thread} [thread] The thread where breakpoint should be set.
+   *   If this field is absent, breakpoint applies to all threads.
+   *
+   * @returns {Promise<Breakpoint, GDBError>} A promise that resolves with a breakpoint.
+   */
+  addFunctionBreak (label, thread) {
+    return this.addOptionsBreak(`--function ${label}`)
+  }
+
+  /**
+   * Insert a breakpoint at the specified label.
+   *
+   * @param {string} label The label.
+   * @param {Thread} [thread] The thread where breakpoint should be set.
+   *   If this field is absent, breakpoint applies to all threads.
+   *
+   * @returns {Promise<Breakpoint, GDBError>} A promise that resolves with a breakpoint.
+   */
+  addLabelBreak (label, thread) {
+    return this.addOptionsBreak(`--label ${label}`)
+  }
+
+  /**
+   * Insert a breakpoint at the specified explicit or address location.
+   *
+   * @param {string} options: source/function/label/address or line
+   *   https://sourceware.org/gdb/onlinedocs/gdb/GDB_002fMI-Breakpoint-Commands.html
+   * @param {Thread} [thread] The thread where breakpoint should be set.
+   *   If this field is absent, breakpoint applies to all threads.
+   *
+   * @returns {Promise<Breakpoint, GDBError>} A promise that resolves with a breakpoint.
+   */
+  addOptionsBreak (options, thread) {
     return this._sync(async () => {
       let opt = thread ? '-p ' + thread.id : ''
-      let { bkpt } = await this._execMI(`-break-insert ${opt} ${file}:${pos}`)
+      let { bkpt } = await this._execMI(`-break-insert ${opt} ${options}`)
       if (Array.isArray(bkpt)) {
         return new Breakpoint(toInt(bkpt[0].number), {
           file: bkpt[1].fullname,

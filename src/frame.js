@@ -8,6 +8,7 @@ class Frame {
    * @param {object} options The options object.
    * @param {string} options.file The full path to a file.
    * @param {number} options.line The line number.
+   * @param {string} [options.func] The func.
    * @param {number} [options.level] The level of stack frame.
    */
   constructor (options = {}) {
@@ -24,6 +25,12 @@ class Frame {
      * @type {number}
      */
     this.line = options.line
+
+    /**
+     * The func.
+     * @type {?string}
+     */
+    this.func = options.func
 
     /**
      * The level of stack frame.

@@ -156,8 +156,8 @@ describe('gdb-js', () => {
       await gdb.exit()
 
       expect(res).to.deep.equal([
-        new Frame({ level: 0, file: '/examples/factorial/factorial.c', line: 23 }),
-        new Frame({ level: 1, file: '/examples/factorial/factorial.c', line: 17 })
+        new Frame({ level: 0, func: 'factorial', file: '/examples/factorial/factorial.c', line: 23 }),
+        new Frame({ level: 1, func: 'main', file: '/examples/factorial/factorial.c', line: 17 })
       ])
     })
 
@@ -287,7 +287,7 @@ describe('gdb-js', () => {
         id: 1,
         status: 'stopped',
         group: null,
-        frame: { file: '/examples/factorial/factorial.c', line: 23, level: 0 }
+        frame: { file: '/examples/factorial/factorial.c', func: undefined, line: 23, level: 0 }
       })
     })
 

@@ -250,7 +250,8 @@ class GDB extends EventEmitter {
           event.thread = new Thread(toInt(thread), {
             frame: new Frame({
               file: data.frame.fullname,
-              line: toInt(data.frame.line)
+              line: toInt(data.frame.line),
+              func: data.frame.func
             }),
             status: 'stopped'
           })
@@ -498,7 +499,8 @@ class GDB extends EventEmitter {
           options.frame = new Frame({
             file: t.frame.fullname,
             line: toInt(t.frame.line),
-            level: toInt(t.frame.level)
+            level: toInt(t.frame.level),
+            func: t.frame.func
           })
         }
 
@@ -630,6 +632,19 @@ class GDB extends EventEmitter {
   }
 
   /**
+   * Step back in.
+   *
+   * @param {Thread|ThreadGroup} [scope] The thread or thread group where
+   *   the stepping should be done.
+   *
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
+   */
+  reverseStepIn (scope) {
+    return this._sync(() => this._execMI('-exec-step --reverse', scope))
+  }
+
+  /**
    * Step out.
    *
    * @param {Thread|ThreadGroup} [scope] The thread or thread group where
@@ -653,6 +668,19 @@ class GDB extends EventEmitter {
    */
   next (scope) {
     return this._sync(() => this._execMI('-exec-next', scope))
+  }
+
+  /**
+   * Execute to the previous line.
+   *
+   * @param {Thread|ThreadGroup} [scope] The thread or thread group where
+   *   the stepping should be done.
+   *
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
+   */
+  reverseNext (scope) {
+    return this._sync(() => this._execMI('-exec-next --reverse', scope))
   }
 
   /**
@@ -687,6 +715,20 @@ class GDB extends EventEmitter {
   }
 
   /**
+   * Continue reverse execution.
+   *
+   * @param {Thread|ThreadGroup} [scope] The thread or thread group that should be continued.
+   *   If this parameter is omitted, all threads are continued.
+   *
+   * @returns {Promise<undefined, GDBError>} A promise that resolves/rejects
+   *   after completion of a GDB command.
+   */
+  reverseProceed (scope) {
+    return this._sync(() => this._execMI(scope
+      ? '-exec-continue --reverse' : '-exec-continue --all --reverse', scope))
+  }
+
+  /**
    * List all symbols in the current context (i.e. all global, static, local
    * variables and constants in the current file).
    *
@@ -715,7 +757,8 @@ class GDB extends EventEmitter {
       return stack.map((f) => new Frame({
         file: f.value.fullname,
         line: toInt(f.value.line),
-        level: toInt(f.value.level)
+        level: toInt(f.value.level),
+        func: f.value.func
       }))
     })
   }

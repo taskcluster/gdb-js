@@ -250,7 +250,8 @@ class GDB extends EventEmitter {
           event.thread = new Thread(toInt(thread), {
             frame: new Frame({
               file: data.frame.fullname,
-              line: toInt(data.frame.line)
+              line: toInt(data.frame.line),
+              func: data.frame.func
             }),
             status: 'stopped'
           })
@@ -498,7 +499,8 @@ class GDB extends EventEmitter {
           options.frame = new Frame({
             file: t.frame.fullname,
             line: toInt(t.frame.line),
-            level: toInt(t.frame.level)
+            level: toInt(t.frame.level),
+            func: t.frame.func
           })
         }
 

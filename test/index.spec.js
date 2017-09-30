@@ -287,7 +287,7 @@ describe('gdb-js', () => {
         id: 1,
         status: 'stopped',
         group: null,
-        frame: { file: '/examples/factorial/factorial.c', func: undefined, line: 23, level: 0 }
+        frame: { file: '/examples/factorial/factorial.c', func: 'factorial', line: 23, level: 0 }
       })
     })
 
@@ -398,7 +398,8 @@ describe('gdb-js', () => {
               id: 1,
               frame: new Frame({
                 file: '/examples/hello-world/hello.c',
-                line: 9
+                line: 9,
+                func: 'main'
               }),
               status: 'stopped'
             }),
